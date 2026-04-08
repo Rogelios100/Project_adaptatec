@@ -6,7 +6,7 @@ Adaptatec es una plataforma web diseñada para apoyar el aprendizaje académico 
 
 El sistema no solo responde preguntas, sino que acompaña el proceso educativo, ajustando explicaciones, generando ejercicios y ofreciendo retroalimentación continua.
 
-🎯 Objetivo
+Objetivo:
 
 Proporcionar una herramienta educativa inteligente que permita a los estudiantes:
 
@@ -15,20 +15,14 @@ Resolver dudas en tiempo real
 Practicar con ejercicios adaptativos
 Recibir explicaciones personalizadas
 Obtener recompensas por progreso
-🚀 Funcionalidades Principales
-📚 Selección de Materia
+*  Funcionalidades Principales
+* Selección de Materia
 
-El estudiante puede elegir una materia específica, por ejemplo:
-
-Matemáticas
-Física
-Historia
-Programación
-Español
+El estudiante puede elegir una materia específica.
 
 Cada materia tiene un agente IA configurado con un prompt especializado.
 
-🤖 Asistente IA Adaptativo
+Asistente IA Adaptativo
 
 El agente IA:
 
@@ -37,7 +31,7 @@ Ajusta el nivel de dificultad
 Detecta el conocimiento del usuario
 Explica paso a paso cuando es necesario
 Profundiza si el alumno domina el tema
-🧩 Generación de Ejercicios
+* Generación de Ejercicios
 
 El sistema puede:
 
@@ -46,7 +40,7 @@ Ajustar dificultad según progreso
 Proporcionar ejemplos prácticos
 Validar respuestas
 Dar retroalimentación inmediata
-📈 Seguimiento del Progreso
+* Seguimiento del Progreso
 
 Adaptatec registra:
 
@@ -55,7 +49,7 @@ Porcentaje de dominio
 Historial de interacciones
 Resultados de ejercicios
 Evolución del aprendizaje
-🏆 Sistema de Recompensas
+* Sistema de Recompensas
 
 El sistema incluye gamificación mediante:
 
@@ -67,7 +61,7 @@ Rachas de aprendizaje
 
 Esto motiva el aprendizaje continuo.
 
-⚖️ Marco Legal de la IA
+* Marco Legal de la IA
 
 El agente IA está restringido por un marco legal y educativo, que:
 
@@ -76,7 +70,7 @@ Limita respuestas fuera del contexto académico
 Protege datos del estudiante
 Asegura uso educativo responsable
 Cumple políticas de seguridad
-🏗️ Arquitectura General
+* Arquitectura General
 
 El sistema se compone de:
 
@@ -86,7 +80,7 @@ Motor IA adaptativo
 Base de datos académica
 Sistema de recompensas
 Módulo de progreso
-🔄 Flujo de Uso
+* Flujo de Uso
 El estudiante inicia sesión
 Selecciona una materia
 El sistema carga el agente IA configurado
@@ -97,7 +91,7 @@ El estudiante responde
 El sistema evalúa progreso
 Se otorgan recompensas
 Se actualiza nivel del estudiante
-🧑‍🎓 Público Objetivo
+* Público Objetivo
 
 Adaptatec está dirigido a:
 
@@ -106,7 +100,7 @@ Estudiantes de secundaria
 Bachillerato
 Aprendizaje autodidacta
 Refuerzo escolar
-💡 Características Clave
+* Características Clave
 
 ✔ IA por materia
 ✔ Aprendizaje adaptativo
