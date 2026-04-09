@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter } from "react-router-dom";
 import { Layout } from "./components/student-profile/Layout";
 import { ProfileOverview } from "./components/student-profile/ProfileOverview";
 import { Subjects } from "./components/student-profile/Subjects";
