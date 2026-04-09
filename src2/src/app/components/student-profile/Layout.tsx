@@ -5,19 +5,22 @@ import {
   Trophy, 
   TrendingUp,
   Menu,
-  X
+  X,
+  LogOut
 } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const navItems = [
-    { path: "/", label: "Perfil", icon: User },
-    { path: "/materias", label: "Materias", icon: BookOpen },
-    { path: "/recompensas", label: "Recompensas", icon: Trophy },
-    { path: "/progreso", label: "Progreso", icon: TrendingUp },
+    { path: "/dashboard", label: "Perfil", icon: User },
+    { path: "/dashboard/materias", label: "Materias", icon: BookOpen },
+    { path: "/dashboard/recompensas", label: "Recompensas", icon: Trophy },
+    { path: "/dashboard/progreso", label: "Progreso", icon: TrendingUp },
   ];
 
   return (

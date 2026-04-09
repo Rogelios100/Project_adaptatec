@@ -1,6 +1,11 @@
 import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
 
+console.log("App component loaded");
+
 export default function App() {
-  return <RouterProvider router={router} />;
+  console.log("App rendering with router");
+  return (
+    <RouterProvider router={router} />
+  );
 }
