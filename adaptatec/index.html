@@ -2,13 +2,17 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adaptatec - Plataforma de Aprendizaje Adaptativo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Adaptatec - Portal del Alumno</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
-    <!-- LOGIN/REGISTRO MODAL -->
-    <div id="authContainer" class="auth-container active">
+    <!-- LOGIN MODAL -->
+    <div id="authContainer" class="auth-container">
         <div class="auth-box">
             <div class="auth-header">
                 <h1 class="logo">
@@ -17,13 +21,11 @@
                 <p class="tagline">Tu Asistente de Aprendizaje Adaptativo</p>
             </div>
 
-            <!-- TAB BUTTONS -->
             <div class="auth-tabs">
                 <button class="tab-button active" data-tab="login">Iniciar Sesión</button>
                 <button class="tab-button" data-tab="register">Registrarse</button>
             </div>
 
-            <!-- LOGIN FORM -->
             <form id="loginForm" class="auth-form active" data-form="login">
                 <div class="form-group">
                     <label for="loginUsername">Usuario:</label>
@@ -37,7 +39,6 @@
                 <button type="submit" class="btn btn-primary btn-block">Iniciar Sesión</button>
             </form>
 
-            <!-- REGISTER FORM -->
             <form id="registerForm" class="auth-form" data-form="register">
                 <div class="form-group">
                     <label for="regUsername">Usuario:</label>
@@ -67,7 +68,6 @@
 
     <!-- MAIN APP CONTAINER -->
     <div id="appContainer" class="app-container">
-        <!-- HEADER/NAVBAR -->
         <header class="header">
             <div class="header-content">
                 <h1 class="header-logo">
@@ -82,7 +82,6 @@
         </header>
 
         <div class="app-wrapper">
-            <!-- SIDEBAR NAVIGATION -->
             <aside class="sidebar">
                 <nav class="sidebar-nav">
                     <button class="nav-button active" data-view="dashboard">
@@ -94,8 +93,8 @@
                     <button class="nav-button" data-view="recompensas">
                         🏆 Recompensas
                     </button>
-                    <button class="nav-button" data-view="ia-asistente">
-                        🤖 Asistente IA
+                    <button class="nav-button" data-view="progreso">
+                        📈 Progreso
                     </button>
                     <button class="nav-button admin-only" data-view="admin-panel" style="display:none;">
                         ⚙️ Panel Admin
@@ -106,168 +105,132 @@
                 </nav>
             </aside>
 
-            <!-- MAIN CONTENT AREA -->
             <main class="main-content">
-                <!-- DASHBOARD VIEW -->
+                <!-- DASHBOARD VIEW (Estilo segunda imagen) -->
                 <section id="dashboardView" class="view active">
                     <div class="view-header">
                         <h2>Panel de Control</h2>
                     </div>
 
+                    <!-- Perfil del Alumno - Estilo segunda imagen -->
+                    <div class="profile-hero student-profile-view">
+                        <div class="profile-info">
+                            <div class="avatar" id="profileAvatar">JD</div>
+                            <div class="profile-details">
+                                <h3 id="profileFullName">Juan David Pérez</h3>
+                                <p id="profileCareer">Estudiante de Ingeniería en Sistemas</p>
+                                <span class="badge-level" id="profileLevel">Nivel 12 - Aprendiz Avanzado</span>
+                            </div>
+                        </div>
+                        <div class="personal-info-grid" id="personalInfoGrid"></div>
+                    </div>
+
+                    <!-- Estadísticas y Materias en Progreso -->
                     <div class="dashboard-grid">
-                        <!-- STUDENT SPECIFIC -->
-                        <div class="student-section" style="display:none;">
-                            <div class="card progress-card">
-                                <h3>Tu Progreso General</h3>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" id="overallProgress" style="width: 45%;"></div>
-                                </div>
-                                <p class="progress-text">45% Completado</p>
+                        <div class="card">
+                            <h3>📊 Total de Logros</h3>
+                            <div class="stats-row">
+                                <div class="stat-badge" id="logrosObtenidos">🏅 8/24 Obtenidos</div>
+                                <div class="stat-badge" id="puntosDisplay">⭐ 87 Puntos Acumulados</div>
                             </div>
-
-                            <div class="card stats-card">
-                                <h3>Estadísticas</h3>
-                                <div class="stats-grid">
-                                    <div class="stat">
-                                        <span class="stat-number">23</span>
-                                        <span class="stat-label">Horas Estudiadas</span>
-                                    </div>
-                                    <div class="stat">
-                                        <span class="stat-number">87</span>
-                                        <span class="stat-label">Puntos Acumulados</span>
-                                    </div>
-                                    <div class="stat">
-                                        <span class="stat-number">5</span>
-                                        <span class="stat-label">Niveles Alcanzados</span>
-                                    </div>
-                                    <div class="stat">
-                                        <span class="stat-number">12</span>
-                                        <span class="stat-label">Recompensas</span>
-                                    </div>
-                                </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="logrosProgressFill" style="width:33%"></div>
                             </div>
-
-                            <div class="card recent-activities">
-                                <h3>Actividad Reciente</h3>
-                                <ul class="activities-list">
-                                    <li>✓ Completaste el módulo "Introducción a Algoritmos"</li>
-                                    <li>🏆 Obtuviste la recompensa "Primer Paso"</li>
-                                    <li>📈 Mejoraste tu puntaje en Matemáticas a 92%</li>
-                                </ul>
-                            </div>
+                            <p class="progress-text" id="logrosProgressText">33% de logros desbloqueados</p>
                         </div>
 
-                        <!-- TEACHER SPECIFIC -->
-                        <div class="teacher-section" style="display:none;">
-                            <div class="card">
-                                <h3>Mis Cursos</h3>
-                                <div class="course-list">
-                                    <div class="course-item">
-                                        <strong>Matemáticas Avanzadas</strong>
-                                        <p>45 estudiantes | 12 módulos</p>
-                                    </div>
-                                    <div class="course-item">
-                                        <strong>Física General</strong>
-                                        <p>38 estudiantes | 10 módulos</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="card">
-                                <h3>Estudiantes Activos Hoy</h3>
-                                <p class="big-number">23</p>
-                                <p>de 83 estudiantes en total</p>
-                            </div>
+                        <div class="card">
+                            <h3>📚 Materias en Progreso</h3>
+                            <div id="materiasProgresoList"></div>
                         </div>
+                    </div>
 
-                        <!-- ADMIN SPECIFIC -->
-                        <div class="admin-section" style="display:none;">
-                            <div class="card">
-                                <h3>Estadísticas del Sistema</h3>
-                                <div class="admin-stats">
-                                    <div class="stat-box">
-                                        <strong>2,450</strong>
-                                        <p>Usuarios Activos</p>
-                                    </div>
-                                    <div class="stat-box">
-                                        <strong>89</strong>
-                                        <p>Docentes</p>
-                                    </div>
-                                    <div class="stat-box">
-                                        <strong>2,240</strong>
-                                        <p>Estudiantes</p>
-                                    </div>
-                                    <div class="stat-box">
-                                        <strong>145</strong>
-                                        <p>Cursos Activos</p>
-                                    </div>
-                                </div>
+                    <!-- Actividad Reciente -->
+                    <div class="card">
+                        <h3>🕒 Actividad Reciente</h3>
+                        <ul class="activities-list" id="recentActivitiesList"></ul>
+                    </div>
+
+                    <!-- Sección Docente (solo visible para docentes) -->
+                    <div class="teacher-section" style="display:none;">
+                        <div class="card">
+                            <h3>Mis Cursos</h3>
+                            <div id="teacherCourses"></div>
+                        </div>
+                        <div class="card">
+                            <h3>Estudiantes Activos Hoy</h3>
+                            <p class="big-number">23</p>
+                            <p>de 83 estudiantes en total</p>
+                        </div>
+                    </div>
+
+                    <!-- Sección Admin (solo visible para admin) -->
+                    <div class="admin-section" style="display:none;">
+                        <div class="card">
+                            <h3>Estadísticas del Sistema</h3>
+                            <div class="admin-stats">
+                                <div class="stat-box"><strong>2,450</strong><p>Usuarios Activos</p></div>
+                                <div class="stat-box"><strong>89</strong><p>Docentes</p></div>
+                                <div class="stat-box"><strong>2,240</strong><p>Estudiantes</p></div>
+                                <div class="stat-box"><strong>145</strong><p>Cursos Activos</p></div>
                             </div>
                         </div>
                     </div>
                 </section>
 
                 <!-- MATERIAS VIEW -->
-                <section id="materiasView" class="view">
+                <!-- MATERIAS VIEW (Diseño como segunda imagen) -->
+                <section id="materiasView" class="view active">
                     <div class="view-header">
-                        <h2>Gestión de Materias</h2>
-                        <button class="btn btn-primary admin-only docente-only" id="addMateriaBtn" style="display:none;">+ Nueva Materia</button>
+                        <h2>Mis Materias</h2>
+                        <p>Gestiona tu progreso y pregunta a la IA en cada materia</p>
                     </div>
 
-                    <div class="materias-grid" id="materiasGrid">
-                        <!-- Materias se cargarán aquí -->
-                    </div>
+                    <div class="materias-grid" id="materiasGrid"></div>
 
-                    <!-- Modal para agregar/editar materia -->
-                    <div id="materiaModal" class="modal" style="display:none;">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h3 id="materiaModalTitle">Nueva Materia</h3>
-                                <button class="modal-close">&times;</button>
-                            </div>
-                            <form id="materiaForm">
-                                <div class="form-group">
-                                    <label>Nombre de la Materia:</label>
-                                    <input type="text" id="materiaName" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Descripción:</label>
-                                    <textarea id="materiaDesc" rows="3"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label>Icono/Emoji:</label>
-                                    <input type="text" id="materiaIcon" placeholder="📚" maxlength="2">
-                                </div>
-                                <div class="form-actions">
-                                    <button type="submit" class="btn btn-primary">Guardar</button>
-                                    <button type="button" class="btn btn-outline modal-close">Cancelar</button>
-                                </div>
-                            </form>
+                    <!-- Estadísticas Generales -->
+                    <div class="stats-general">
+                        <div class="stat-general-card">
+                            <div class="stat-number" id="totalModulosCompletados">41</div>
+                            <div class="stat-label">Módulos Completados</div>
+                        </div>
+                        <div class="stat-general-card">
+                            <div class="stat-number" id="totalHorasEstudio">150</div>
+                            <div class="stat-label">Horas Totales de Estudio</div>
+                        </div>
+                        <div class="stat-general-card">
+                            <div class="stat-number" id="progresoPromedio">58</div>
+                            <div class="stat-label">Progreso Promedio</div>
                         </div>
                     </div>
                 </section>
+
+                <!-- VISTA DE MÓDULOS (al hacer clic en una materia) -->
+                <section id="modulosView" class="view">
+                    <div class="view-header">
+                        <button id="backToMateriasBtn" class="btn btn-outline" style="margin-bottom: 1rem;">← Volver a Materias</button>
+                        <h2 id="modulosMateriaTitle">Módulos</h2>
+                        <p id="modulosMateriaDesc">Selecciona un módulo para continuar aprendiendo</p>
+                    </div>
+                    <div class="modulos-grid" id="modulosGrid"></div>
+                </section>
+
+
 
                 <!-- RECOMPENSAS VIEW -->
                 <section id="recompensasView" class="view">
                     <div class="view-header">
                         <h2>Sistema de Recompensas</h2>
                     </div>
-
                     <div class="rewards-container">
                         <div class="rewards-section">
                             <h3>Mis Recompensas Desbloqueadas</h3>
-                            <div class="rewards-grid" id="unlockedRewards">
-                                <!-- Recompensas desbloqueadas -->
-                            </div>
+                            <div class="rewards-grid" id="unlockedRewards"></div>
                         </div>
-
                         <div class="rewards-section">
                             <h3>Recompensas Disponibles</h3>
-                            <div class="rewards-grid" id="availableRewards">
-                                <!-- Recompensas disponibles -->
-                            </div>
+                            <div class="rewards-grid" id="availableRewards"></div>
                         </div>
-
                         <div class="rewards-section">
                             <h3>Mi Información</h3>
                             <div class="user-rewards-info">
@@ -288,32 +251,61 @@
                     </div>
                 </section>
 
-                <!-- IA ASISTENTE VIEW -->
-                <section id="iaAsistenteView" class="view">
+                <!-- PROGRESO VIEW -->
+                <section id="progresoView" class="view">
                     <div class="view-header">
-                        <h2>🤖 Asistente IA - Consulta tus Dudas</h2>
+                        <h2>Mi Progreso</h2>
+                        <p>Analiza tu rendimiento y mejora continuamente</p>
                     </div>
 
-                    <div class="ia-container">
-                        <div class="ia-chat-box" id="iaChat">
-                            <!-- Mensajes del chat -->
-                            <div class="chat-message bot-message">
-                                <div class="message-content">Hola! 👋 Soy tu asistente de IA. ¿En qué puedo ayudarte? Puedo responder preguntas sobre las materias, ayudarte con explicaciones o resolver dudas que tengas.</div>
-                            </div>
+                    <div class="stats-mini-grid">
+                        <div class="card stat-card">
+                            <h3 id="horasSemana">17.3h</h3>
+                            <p>Horas esta semana</p>
                         </div>
+                        <div class="card stat-card">
+                            <h3 id="promedioGlobal">90%</h3>
+                            <p>Promedio General</p>
+                        </div>
+                        <div class="card stat-card">
+                            <h3 id="modulosCompletados">47</h3>
+                            <p>Módulos completados</p>
+                        </div>
+                        <div class="card stat-card">
+                            <h3 id="nivelUsuario">12</h3>
+                            <p>Nivel Actual</p>
+                        </div>
+                    </div>
 
-                        <div class="ia-input-area">
-                            <select id="matteriaSelectIA" class="form-select">
-                                <option value="">Selecciona una materia...</option>
-                                <option value="matematica">Matemáticas</option>
-                                <option value="fisica">Física</option>
-                                <option value="quimica">Química</option>
-                                <option value="historia">Historia</option>
-                                <option value="biologia">Biología</option>
-                            </select>
-                            <div class="chat-input-wrapper">
-                                <input type="text" id="iaInput" placeholder="Escribe tu pregunta...">
-                                <button id="iaSendBtn" class="btn btn-primary">Enviar</button>
+                    <div class="charts-grid">
+                        <div class="card">
+                            <h3>Horas de Estudio Esta Semana</h3>
+                            <canvas id="horasChart"></canvas>
+                        </div>
+                        <div class="card">
+                            <h3>Progreso de Calificaciones</h3>
+                            <canvas id="calificacionesChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="card">
+                            <h3>Distribución por Materia</h3>
+                            <canvas id="materiasChart"></canvas>
+                        </div>
+                        <div class="card">
+                            <h3>Metas del Mes</h3>
+                            <p>Estudiar 80 horas</p>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width:84%"></div>
+                            </div>
+                            <p>Completar módulos</p>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width:80%; background:#10b981;"></div>
+                            </div>
+                            <p>Promedio</p>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width:90%; background:#8b5cf6;"></div>
                             </div>
                         </div>
                     </div>
@@ -324,7 +316,6 @@
                     <div class="view-header">
                         <h2>⚙️ Panel de Administración</h2>
                     </div>
-
                     <div class="admin-panel">
                         <div class="admin-tabs">
                             <button class="admin-tab-btn active" data-admin-tab="usuarios">Gestión de Usuarios</button>
@@ -332,65 +323,32 @@
                             <button class="admin-tab-btn" data-admin-tab="reportes">Reportes</button>
                         </div>
 
-                        <!-- USUARIOS TAB -->
                         <div id="usuariosTab" class="admin-tab-content active">
                             <h3>Usuarios del Sistema</h3>
                             <table class="admin-table">
                                 <thead>
-                                    <tr>
-                                        <th>Usuario</th>
-                                        <th>Email</th>
-                                        <th>Rol</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
-                                    </tr>
+                                    <tr><th>Usuario</th><th>Email</th><th>Rol</th><th>Acciones</th></tr>
                                 </thead>
-                                <tbody id="usuariosTableBody">
-                                    <!-- Se llenarán dinámicamente -->
-                                </tbody>
+                                <tbody id="usuariosTableBody"></tbody>
                             </table>
                         </div>
 
-                        <!-- CURSOS TAB -->
                         <div id="cursosTab" class="admin-tab-content">
                             <h3>Cursos del Sistema</h3>
                             <button class="btn btn-primary" id="addCourseBtn">+ Nuevo Curso</button>
                             <table class="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>Curso</th>
-                                        <th>Docente</th>
-                                        <th>Estudiantes</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="cursosTableBody">
-                                    <!-- Se llenarán dinámicamente -->
-                                </tbody>
+                                <thead><tr><th>Curso</th><th>Docente</th><th>Estudiantes</th><th>Acciones</th></tr></thead>
+                                <tbody id="cursosTableBody"></tbody>
                             </table>
                         </div>
 
-                        <!-- REPORTES TAB -->
                         <div id="reportesTab" class="admin-tab-content">
                             <h3>Reportes del Sistema</h3>
                             <div class="reports-grid">
-                                <div class="report-card">
-                                    <h4>Usuarios Activos Hoy</h4>
-                                    <p class="report-number">1,234</p>
-                                </div>
-                                <div class="report-card">
-                                    <h4>Promedio de Sesiones</h4>
-                                    <p class="report-number">45 min</p>
-                                </div>
-                                <div class="report-card">
-                                    <h4>Tasa de Completitud</h4>
-                                    <p class="report-number">78%</p>
-                                </div>
-                                <div class="report-card">
-                                    <h4>Nuevos Usuarios</h4>
-                                    <p class="report-number">+23</p>
-                                </div>
+                                <div class="report-card"><h4>Usuarios Activos Hoy</h4><p class="report-number">1,234</p></div>
+                                <div class="report-card"><h4>Promedio de Sesiones</h4><p class="report-number">45 min</p></div>
+                                <div class="report-card"><h4>Tasa de Completitud</h4><p class="report-number">78%</p></div>
+                                <div class="report-card"><h4>Nuevos Usuarios</h4><p class="report-number">+23</p></div>
                             </div>
                         </div>
                     </div>
@@ -401,7 +359,6 @@
                     <div class="view-header">
                         <h2>📋 Panel de Docente</h2>
                     </div>
-
                     <div class="docente-panel">
                         <div class="docente-tabs">
                             <button class="docente-tab-btn active" data-docente-tab="mis-cursos">Mis Cursos</button>
@@ -409,45 +366,22 @@
                             <button class="docente-tab-btn" data-docente-tab="calificaciones">Calificaciones</button>
                         </div>
 
-                        <!-- MIS CURSOS TAB -->
                         <div id="misCursosTab" class="docente-tab-content active">
                             <h3>Cursos Impartidos</h3>
                             <button class="btn btn-primary" id="createCourseBtn">+ Crear Nuevo Curso</button>
-                            <div class="courses-list">
-                                <div class="course-card">
-                                    <h4>Matemáticas Avanzadas</h4>
-                                    <p>45 estudiantes | 12 módulos</p>
-                                    <div class="course-actions">
-                                        <button class="btn btn-small">Ver Detalles</button>
-                                        <button class="btn btn-small">Editar</button>
-                                    </div>
-                                </div>
-                            </div>
+                            <div class="courses-list" id="teacherCoursesList"></div>
                         </div>
 
-                        <!-- ESTUDIANTES TAB -->
                         <div id="estudiantesTab" class="docente-tab-content">
                             <h3>Mis Estudiantes</h3>
-                            <div class="students-list">
-                                <!-- Se llenarán dinámicamente -->
-                            </div>
+                            <div class="students-list" id="studentsList"></div>
                         </div>
 
-                        <!-- CALIFICACIONES TAB -->
                         <div id="calificacionesTab" class="docente-tab-content">
                             <h3>Registro de Calificaciones</h3>
                             <table class="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>Estudiante</th>
-                                        <th>Curso</th>
-                                        <th>Calificación</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="calificacionesTableBody">
-                                    <!-- Se llenarán dinámicamente -->
-                                </tbody>
+                                <thead><tr><th>Estudiante</th><th>Curso</th><th>Calificación</th><th>Acciones</th></tr></thead>
+                                <tbody id="calificacionesTableBody"></tbody>
                             </table>
                         </div>
                     </div>
@@ -457,5 +391,24 @@
     </div>
 
     <script src="js/app.js"></script>
+
+    <!-- BURBUJA FLOTANTE DE IA (Chatbot) -->
+    <div id="chatFab" class="chat-fab">
+        <div class="chat-fab-icon">🤖</div>
+    </div>
+
+    <div id="chatModal" class="chat-modal">
+        <div class="chat-modal-header">
+            <h3>🤖 Asistente IA Educativo</h3>
+            <button id="chatCloseBtn" class="chat-close">&times;</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">¡Hola! Soy tu asistente de aprendizaje. Pregúntame sobre cualquier materia, módulo o tema educativo del plan de estudios TECNM.</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Escribe tu pregunta..." class="chat-input">
+            <button id="chatSendBtn" class="btn btn-primary">Enviar</button>
+        </div>
+    </div>
 </body>
 </html>

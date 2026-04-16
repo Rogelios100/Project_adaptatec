@@ -1,528 +1,687 @@
-// ===== APP STATE =====
-const appState = {
-    currentUser: null,
-    users: [
-        { id: 'ALU001', username: 'ALU001', password: '123', name: 'Juan Pérez', email: 'juan@adaptatec.com', role: 'alumno' },
-        { id: 'ALU002', username: 'ALU002', password: '123', name: 'María García', email: 'maria@adaptatec.com', role: 'alumno' },
-        { id: 'DOC001', username: 'DOC001', password: '123', name: 'Prof. Carlos López', email: 'carlos@adaptatec.com', role: 'docente' },
-        { id: 'DOC002', username: 'DOC002', password: '123', name: 'Prof. Ana Martínez', email: 'ana@adaptatec.com', role: 'docente' },
-        { id: 'ADMIN001', username: 'ADMIN001', password: '123', name: 'Administrador', email: 'admin@adaptatec.com', role: 'admin' },
-    ],
-    materias: [
-        { id: 1, name: 'Matemáticas', icon: '🔢', description: 'Álgebra, Cálculo y Geometría', progress: 75 },
-        { id: 2, name: 'Física', icon: '⚛️', description: 'Conceptos de la física clásica', progress: 60 },
-        { id: 3, name: 'Química', icon: '🧪', description: 'Tabla periódica y reacciones', progress: 45 },
-        { id: 4, name: 'Historia', icon: '📖', description: 'Historia mundial y local', progress: 80 },
-        { id: 5, name: 'Biología', icon: '🧬', description: 'Organismos y sistemas', progress: 55 },
-        { id: 6, name: 'Literatura', icon: '📚', description: 'Clásicos y obras modernas', progress: 90 },
-    ],
-    rewards: [
-        { id: 1, name: 'Primer Paso', icon: '🚀', points: 10, unlocked: true },
-        { id: 2, name: 'Matemático', icon: '🔢', points: 50, unlocked: true },
-        { id: 3, name: 'Estudioso', icon: '🎓', points: 100, unlocked: false },
-        { id: 4, name: 'Perfeccionista', icon: '⭐', points: 200, unlocked: false },
-        { id: 5, name: 'Campeón', icon: '🏆', points: 500, unlocked: false },
-        { id: 6, name: 'Leyenda', icon: '👑', points: 1000, unlocked: false },
-        { id: 7, name: 'Filósofo', icon: '🧠', points: 75, unlocked: true },
-        { id: 8, name: 'Bibliófilo', icon: '📕', points: 60, unlocked: false },
-    ],
-    userProgress: {
-        'ALU001': {
-            points: 87,
-            level: 5,
-            unlockedRewards: [1, 2, 7],
-            hoursStudied: 23,
-            completedModules: 8
-        }
+// ========== DATA MODEL ==========
+let users = JSON.parse(localStorage.getItem('adaptatec_users')) || [
+    {
+        username: "ALU001",
+        password: "123",
+        email: "juan.perez@universidad.edu",
+        name: "Juan David Pérez",
+        role: "alumno",
+        nivel: 12,
+        puntos: 87,
+        logros: 8,
+        totalLogros: 24,
+        horas: 23,
+        materias: [
+            { id: 1, name: "Algoritmos y Estructuras de Datos", progress: 75, modulosCompletados: 9, totalModulos: 12, horasEstudio: 24 },
+            { id: 2, name: "Desarrollo Web Avanzado", progress: 60, modulosCompletados: 9, totalModulos: 15, horasEstudio: 30 },
+            { id: 3, name: "Base de Datos", progress: 85, modulosCompletados: 8, totalModulos: 10, horasEstudio: 20 },
+            { id: 4, name: "Inteligencia Artificial", progress: 40, modulosCompletados: 5, totalModulos: 14, horasEstudio: 28 },
+            { id: 5, name: "Arquitectura de Software", progress: 55, modulosCompletados: 6, totalModulos: 11, horasEstudio: 22 },
+            { id: 6, name: "Seguridad Informática", progress: 30, modulosCompletados: 4, totalModulos: 13, horasEstudio: 26 }
+        ],
+        recent: [
+            "Completaste el módulo de Árboles Binarios - Hace 2 horas",
+            "Desbloqueaste el logro 'Racha de 7 días' - Hace 5 horas",
+            "Realizaste 15 preguntas a la IA - Hace 1 día",
+            "Obtuviste 100% en el examen de SQL - Hace 2 días"
+        ]
+    },
+    {
+        username: "DOC001",
+        password: "123",
+        email: "doc@uni.edu",
+        name: "Dr. Martínez",
+        role: "docente",
+        cursos: ["Matemáticas Avanzadas", "Física General"]
+    },
+    {
+        username: "ADMIN001",
+        password: "123",
+        email: "admin@adaptatec.com",
+        name: "Admin Global",
+        role: "admin"
     }
+];
+
+let materiasGlobal = JSON.parse(localStorage.getItem('adaptatec_materias')) || [
+    { id: 1, nombre: "Algoritmos", desc: "Fundamentos de programación", icon: "📘" },
+    { id: 2, nombre: "Base de Datos", desc: "SQL y modelado", icon: "🗄️" },
+    { id: 3, nombre: "Desarrollo Web", desc: "HTML, CSS, JavaScript", icon: "🌐" }
+];
+
+let currentUser = null;
+let currentMateriaId = null;
+
+// Chart instances
+let horasChart, califChart, materiasChart;
+
+// Módulos por materia (basados en plan TECNM)
+const modulosPorMateria = {
+    1: ["Introducción a Algoritmos", "Estructuras de Datos Lineales", "Pilas y Colas", "Árboles Binarios", "Árboles AVL", "Grafos", "Algoritmos de Ordenamiento", "Algoritmos de Búsqueda", "Complejidad Computacional", "Recursividad", "Backtracking", "Programación Dinámica"],
+    2: ["HTML5 Semántico", "CSS3 Avanzado", "Flexbox y Grid", "JavaScript Básico", "DOM Manipulación", "Eventos", "Fetch API", "React Introducción", "Componentes", "Estado y Props", "Hooks", "Routing", "Despliegue", "Optimización", "Pruebas Unitarias"],
+    3: ["Modelado Entidad-Relación", "SQL Básico", "Consultas Avanzadas", "JOINs", "Subconsultas", "Índices", "Procedimientos Almacenados", "Triggers", "NoSQL", "MongoDB"],
+    4: ["Introducción a IA", "Búsqueda no informada", "Búsqueda informada", "Juegos y Minimax", "Aprendizaje Automático", "Regresión Lineal", "Clasificación", "Redes Neuronales", "Deep Learning", "NLP", "Visión Computacional", "Ética en IA", "Agentes Inteligentes", "Sistemas Expertos"],
+    5: ["Patrones de Diseño", "Arquitectura MVC", "Microservicios", "SOA", "Arquitectura Hexagonal", "DDD", "Event-Driven", "Serverless", "Monitoreo", "Escalabilidad", "Seguridad en Arquitectura"],
+    6: ["Criptografía Básica", "Autenticación", "Autorización", "OWASP Top 10", "Inyección SQL", "XSS", "CSRF", "Seguridad en Redes", "Firewalls", "Auditoría", "Respuesta a Incidentes", "Normativas", "Seguridad en la Nube"]
 };
 
-// ===== INITIALIZATION =====
-document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
-    setupEventListeners();
-    loadFromLocalStorage();
-});
-
-function initializeApp() {
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-        appState.currentUser = JSON.parse(savedUser);
-        showMainApp();
-        renderDashboard();
-    }
+// ========== UTILITIES ==========
+function saveUsers() {
+    localStorage.setItem('adaptatec_users', JSON.stringify(users));
 }
 
-function setupEventListeners() {
-    // Auth Tab Switching
-    document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.addEventListener('click', switchAuthTab);
-    });
-
-    // Auth Forms
-    document.getElementById('loginForm').addEventListener('submit', handleLogin);
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
-
-    // Navigation
-    document.querySelectorAll('.nav-button').forEach(btn => {
-        btn.addEventListener('click', switchView);
-    });
-
-    // Logout
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-
-    // Materias
-    const addMateriaBtn = document.getElementById('addMateriaBtn');
-    if (addMateriaBtn) {
-        addMateriaBtn.addEventListener('click', openMateriaModal);
-    }
-
-    document.getElementById('materiaForm')?.addEventListener('submit', handleMateriaSubmit);
-    document.querySelectorAll('.modal-close').forEach(btn => {
-        btn.addEventListener('click', closeModal);
-    });
-
-    // IA Chat
-    document.getElementById('iaSendBtn')?.addEventListener('click', sendIAMessage);
-    document.getElementById('iaInput')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendIAMessage();
-    });
-
-    // Admin tabs
-    document.querySelectorAll('.admin-tab-btn').forEach(btn => {
-        btn.addEventListener('click', switchAdminTab);
-    });
-
-    // Docente tabs
-    document.querySelectorAll('.docente-tab-btn').forEach(btn => {
-        btn.addEventListener('click', switchDocenteTab);
-    });
+function saveMaterias() {
+    localStorage.setItem('adaptatec_materias', JSON.stringify(materiasGlobal));
 }
 
-// ===== AUTHENTICATION =====
-function switchAuthTab(e) {
-    const tabName = e.target.dataset.tab;
+function calcularEstadisticasGenerales() {
+    if (!currentUser || currentUser.role !== 'alumno') return;
+    const materias = currentUser.materias || [];
+    const totalModulos = materias.reduce((sum, m) => sum + (m.modulosCompletados || 0), 0);
+    const totalHoras = materias.reduce((sum, m) => sum + (m.horasEstudio || 0), 0);
+    const progresoPromedio = materias.length ? Math.round(materias.reduce((sum, m) => sum + (m.progress || 0), 0) / materias.length) : 0;
     
-    // Update buttons
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    e.target.classList.add('active');
-
-    // Update forms
-    document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
-    document.querySelector(`[data-form="${tabName}"]`).classList.add('active');
+    const totalModulosEl = document.getElementById('totalModulosCompletados');
+    const totalHorasEl = document.getElementById('totalHorasEstudio');
+    const progresoPromedioEl = document.getElementById('progresoPromedio');
+    
+    if (totalModulosEl) totalModulosEl.innerText = totalModulos;
+    if (totalHorasEl) totalHorasEl.innerText = totalHoras;
+    if (progresoPromedioEl) progresoPromedioEl.innerText = progresoPromedio;
 }
 
-function handleLogin(e) {
+function abrirModulosMateria(materiaId, abrirChat = false) {
+    const materia = currentUser.materias.find(m => m.id === materiaId);
+    if (!materia) return;
+    
+    currentMateriaId = materiaId;
+    const modulos = modulosPorMateria[materiaId] || [`Módulo 1`, `Módulo 2`, `Módulo 3`];
+    const completados = materia.modulosCompletados || 0;
+    
+    const titleEl = document.getElementById('modulosMateriaTitle');
+    const descEl = document.getElementById('modulosMateriaDesc');
+    if (titleEl) titleEl.innerText = materia.name;
+    if (descEl) descEl.innerHTML = `Progreso: ${materia.progress}% completado`;
+    
+    const container = document.getElementById('modulosGrid');
+    if (container) {
+        container.innerHTML = modulos.map((modulo, index) => {
+            const estaCompletado = index < completados;
+            return `
+                <div class="modulo-card ${estaCompletado ? 'completado' : ''}">
+                    <div class="modulo-info">
+                        <h4>📖 ${modulo}</h4>
+                        <p>${estaCompletado ? '✅ Completado' : '📌 Por comenzar'}</p>
+                    </div>
+                    <div class="modulo-status">${estaCompletado ? '✔️' : '🔘'}</div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // Cambiar a la vista de módulos
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const modulosView = document.getElementById('modulosView');
+    if (modulosView) modulosView.classList.add('active');
+    
+    // Mostrar la burbuja IA
+    const chatFab = document.getElementById('chatFab');
+    if (chatFab) chatFab.classList.add('visible');
+    
+    // Si se solicitó abrir el chat automáticamente
+    if (abrirChat) {
+        setTimeout(() => {
+            abrirChatConContexto(materia.name);
+        }, 300);
+    }
+}
+
+function abrirChatConContexto(materiaName) {
+    const chatModal = document.getElementById('chatModal');
+    if (chatModal) {
+        chatModal.classList.add('open');
+        const messagesContainer = document.getElementById('chatMessages');
+        if (messagesContainer) {
+            messagesContainer.innerHTML += `
+                <div class="message bot">📚 Te ayudo con la materia <strong>${materiaName}</strong>. ¿Qué te gustaría saber sobre sus temas, ejercicios o conceptos?</div>
+            `;
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+}
+
+function responderIA(pregunta) {
+    const p = pregunta.toLowerCase();
+    if (p.includes("algoritmo") || p.includes("estructura")) {
+        return "Los algoritmos son secuencias de pasos para resolver problemas. Las estructuras de datos como pilas, colas, árboles y grafos son fundamentales en Ingeniería en Sistemas. ¿Te gustaría profundizar en alguna en particular?";
+    }
+    if (p.includes("web") || p.includes("html") || p.includes("css")) {
+        return "El desarrollo web abarca frontend (HTML, CSS, JS) y backend. En el TECNM aprendemos frameworks como React y Node.js. ¿Necesitas ayuda con algún tema específico?";
+    }
+    if (p.includes("base de datos") || p.includes("sql")) {
+        return "Las bases de datos relacionales usan SQL. Los temas clave son: consultas, JOINs, índices, procedimientos almacenados y normalización. También cubrimos NoSQL como MongoDB.";
+    }
+    if (p.includes("ia") || p.includes("inteligencia artificial")) {
+        return "La IA incluye búsqueda, aprendizaje automático, redes neuronales y procesamiento de lenguaje natural. En el plan TECNM se ven desde búsqueda no informada hasta deep learning.";
+    }
+    if (p.includes("arquitectura") || p.includes("patrón")) {
+        return "La arquitectura de software cubre patrones de diseño, MVC, microservicios y sistemas escalables. ¿Te interesa algún patrón en particular?";
+    }
+    if (p.includes("seguridad") || p.includes("criptografía")) {
+        return "Seguridad informática incluye criptografía, autenticación, OWASP, inyección SQL, XSS y buenas prácticas. ¿En qué área necesitas apoyo?";
+    }
+    return "Puedo ayudarte con temas de algoritmos, desarrollo web, bases de datos, IA, arquitectura de software y seguridad informática según el plan de estudios del TECNM. ¿Qué te gustaría aprender?";
+}
+
+// ========== RENDER FUNCTIONS ==========
+function renderDashboard() {
+    if (!currentUser) return;
+
+    const isStudent = currentUser.role === 'alumno';
+    const isTeacher = currentUser.role === 'docente';
+    const isAdmin = currentUser.role === 'admin';
+
+    document.querySelectorAll('.student-profile-view, .student-section').forEach(el => {
+        el.style.display = isStudent ? 'block' : 'none';
+    });
+    document.querySelector('.teacher-section').style.display = isTeacher ? 'block' : 'none';
+    document.querySelector('.admin-section').style.display = isAdmin ? 'block' : 'none';
+
+    if (isStudent) {
+        document.getElementById('profileFullName').innerText = currentUser.name || "Estudiante";
+        document.getElementById('profileCareer').innerHTML = "Estudiante de Ingeniería en Sistemas";
+        document.getElementById('profileLevel').innerHTML = `Nivel ${currentUser.nivel || 5} - Aprendiz Avanzado`;
+        const avatarText = (currentUser.name || "JD").split(' ').map(n => n[0]).join('').slice(0, 2);
+        document.getElementById('profileAvatar').innerText = avatarText;
+
+        const infoHtml = `
+            <div class="info-row"><span class="info-label">📧 Email:</span> ${currentUser.email || ''}</div>
+            <div class="info-row"><span class="info-label">📅 Ingreso:</span> Marzo 2024</div>
+            <div class="info-row"><span class="info-label">📍 Ubicación:</span> Ciudad de México, México</div>
+            <div class="info-row"><span class="info-label">🆔 Matrícula:</span> 2024-IS-0012</div>
+        `;
+        document.getElementById('personalInfoGrid').innerHTML = infoHtml;
+
+        const obtenidos = currentUser.logros || 8;
+        const total = currentUser.totalLogros || 24;
+        document.getElementById('logrosObtenidos').innerHTML = `🏅 ${obtenidos}/${total} Obtenidos`;
+        document.getElementById('puntosDisplay').innerHTML = `⭐ ${currentUser.puntos || 87} Puntos Acumulados`;
+        const porcentaje = (obtenidos / total) * 100;
+        document.getElementById('logrosProgressFill').style.width = `${porcentaje}%`;
+        document.getElementById('logrosProgressText').innerHTML = `${Math.round(porcentaje)}% de logros desbloqueados`;
+
+        let materiasHtml = '';
+        if (currentUser.materias && currentUser.materias.length > 0) {
+            currentUser.materias.forEach(m => {
+                materiasHtml += `
+                    <p><strong>${m.name}</strong> ${m.progress}%</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${m.progress}%;"></div>
+                    </div>
+                `;
+            });
+        } else {
+            materiasHtml = "<p>No hay materias inscritas</p>";
+        }
+        document.getElementById('materiasProgresoList').innerHTML = materiasHtml;
+
+        const acts = currentUser.recent || [
+            "Completa el módulo 'Introducción a Algoritmos'",
+            "Obtuviste la recompensa 'Primer Paso'",
+            "Mejoraste tu puntaje en Matemáticas a 92%"
+        ];
+        document.getElementById('recentActivitiesList').innerHTML = acts.map(a => `<li>${a}</li>`).join('');
+    }
+
+    if (isTeacher) {
+        const teacherCoursesHtml = (currentUser.cursos || []).map(c => `
+            <div class="course-item">
+                <strong>${c}</strong>
+                <p>45 estudiantes | 12 módulos</p>
+            </div>
+        `).join('');
+        document.getElementById('teacherCourses').innerHTML = teacherCoursesHtml || "<p>No hay cursos asignados</p>";
+    }
+}
+
+function renderMaterias() {
+    const container = document.getElementById('materiasGrid');
+    if (!container || currentUser?.role !== 'alumno') return;
+    
+    // Ocultar burbuja IA cuando estamos en la vista de materias
+    const chatFab = document.getElementById('chatFab');
+    if (chatFab) chatFab.classList.remove('visible');
+    
+    // Cerrar chat si estaba abierto
+    const chatModal = document.getElementById('chatModal');
+    if (chatModal) chatModal.classList.remove('open');
+    
+    // Colores de fondo para cada tarjeta
+    const coloresCard = ['#eff6ff', '#f0fdf4', '#fff7ed', '#faf5ff', '#fff1f2', '#ecfeff'];
+    
+    container.innerHTML = currentUser.materias.map((m, idx) => `
+        <div class="materia-card" data-materia-id="${m.id}" style="background: ${coloresCard[idx % coloresCard.length]};">
+            <div class="materia-header">
+                <h3>${m.name}</h3>
+                <span class="materia-icon">📘</span>
+            </div>
+            <div class="materia-stats">
+                <span>📋 ${m.modulosCompletados}/${m.totalModulos} módulos</span>
+                <span>⏱️ ${m.horasEstudio}h</span>
+            </div>
+            <div class="progress-section">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${m.progress}%; background: #3b82f6;"></div>
+                </div>
+                <div class="progress-text">${m.progress}% completado</div>
+            </div>
+            <button class="btn-ia-materia" data-materia-id="${m.id}" data-materia-name="${m.name}">
+                💬 Pregunta a la IA sobre esta materia
+            </button>
+        </div>
+    `).join('');
+    
+    document.querySelectorAll('.materia-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-ia-materia')) return;
+            const id = parseInt(card.dataset.materiaId);
+            abrirModulosMateria(id, false);
+        });
+    });
+    
+    document.querySelectorAll('.btn-ia-materia').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const materiaId = parseInt(btn.dataset.materiaId);
+            abrirModulosMateria(materiaId, true);
+        });
+    });
+    
+    calcularEstadisticasGenerales();
+}
+
+function renderRecompensas() {
+    const unlockedDiv = document.getElementById('unlockedRewards');
+    const availableDiv = document.getElementById('availableRewards');
+
+    if (currentUser.role === 'alumno') {
+        unlockedDiv.innerHTML = `
+            <span class="reward-item">🏅 Primer Paso</span>
+            <span class="reward-item">⚡ Racha de 7 días</span>
+            <span class="reward-item">💯 SQL Master</span>
+            <span class="reward-item">📚 Lector Ávido</span>
+        `;
+        availableDiv.innerHTML = `
+            <span class="reward-item">🔓 100 puntos (20 pts)</span>
+            <span class="reward-item">🔓 Experto en algoritmos</span>
+            <span class="reward-item">🔓 Maestro del DOM</span>
+        `;
+        document.getElementById('totalPoints').innerText = currentUser.puntos || 87;
+        document.getElementById('currentLevel').innerText = currentUser.nivel || 5;
+        document.getElementById('totalRewards').innerText = currentUser.logros || 8;
+    } else {
+        unlockedDiv.innerHTML = '<p>Las recompensas están disponibles solo para estudiantes</p>';
+        availableDiv.innerHTML = '';
+        document.getElementById('totalPoints').innerText = '-';
+        document.getElementById('currentLevel').innerText = '-';
+        document.getElementById('totalRewards').innerText = '-';
+    }
+}
+
+function renderProgresoCharts() {
+    if (horasChart) horasChart.destroy();
+    if (califChart) califChart.destroy();
+    if (materiasChart) materiasChart.destroy();
+
+    const ctxHoras = document.getElementById('horasChart')?.getContext('2d');
+    const ctxCalif = document.getElementById('calificacionesChart')?.getContext('2d');
+    const ctxMaterias = document.getElementById('materiasChart')?.getContext('2d');
+
+    if (ctxHoras) {
+        horasChart = new Chart(ctxHoras, {
+            type: 'bar',
+            data: {
+                labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                datasets: [{
+                    label: 'Horas Estudiadas',
+                    data: [3, 2.5, 4, 3.2, 2.8, 1.5, 0.5],
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 8
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+    }
+
+    if (ctxCalif) {
+        califChart = new Chart(ctxCalif, {
+            type: 'line',
+            data: {
+                labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May'],
+                datasets: [{
+                    label: 'Calificaciones',
+                    data: [78, 82, 88, 92, 95],
+                    borderColor: '#f97316',
+                    backgroundColor: 'rgba(249,115,22,0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: { responsive: true }
+        });
+    }
+
+    if (ctxMaterias) {
+        materiasChart = new Chart(ctxMaterias, {
+            type: 'doughnut',
+            data: {
+                labels: ['Algoritmos', 'Web Avanzado', 'Base de Datos'],
+                datasets: [{
+                    data: [75, 60, 85],
+                    backgroundColor: ['#3b82f6', '#10b981', '#8b5cf6'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true }
+        });
+    }
+
+    if (currentUser?.role === 'alumno') {
+        document.getElementById('horasSemana').innerText = '17.3h';
+        document.getElementById('promedioGlobal').innerText = '90%';
+        document.getElementById('modulosCompletados').innerText = '47';
+        document.getElementById('nivelUsuario').innerText = currentUser.nivel || 12;
+    }
+}
+
+function renderAdminUsers() {
+    const tbody = document.getElementById('usuariosTableBody');
+    if (tbody) {
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td>${u.username}</td>
+                <td>${u.email || '-'}</td>
+                <td>${u.role}</td>
+                <td>
+                    <button class="btn-small delete-user" data-user="${u.username}" ${u.username === currentUser?.username ? 'disabled' : ''}>
+                        Eliminar
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+        document.querySelectorAll('.delete-user').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const username = btn.getAttribute('data-user');
+                if (username !== currentUser?.username && confirm('¿Eliminar este usuario?')) {
+                    users = users.filter(u => u.username !== username);
+                    saveUsers();
+                    renderAdminUsers();
+                } else if (username === currentUser?.username) {
+                    alert('No puedes eliminarte a ti mismo');
+                }
+            });
+        });
+    }
+}
+
+function renderTeacherPanel() {
+    const coursesContainer = document.getElementById('teacherCoursesList');
+    if (coursesContainer && currentUser?.role === 'docente') {
+        coursesContainer.innerHTML = (currentUser.cursos || []).map(c => `
+            <div class="course-card">
+                <h4>${c}</h4>
+                <p>45 estudiantes | 12 módulos</p>
+                <div class="course-actions">
+                    <button class="btn btn-small">Ver Detalles</button>
+                    <button class="btn btn-small">Editar</button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function applyRoleVisibility() {
+    const isAdmin = currentUser?.role === 'admin';
+    const isDocente = currentUser?.role === 'docente';
+
+    document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = isAdmin ? 'flex' : 'none';
+    });
+    document.querySelectorAll('.docente-only').forEach(el => {
+        el.style.display = isDocente ? 'flex' : 'none';
+    });
+
+    if (isAdmin) renderAdminUsers();
+    if (isDocente) renderTeacherPanel();
+}
+
+function switchView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const targetView = document.getElementById(viewId + 'View');
+    if (targetView) targetView.classList.add('active');
+
+    document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.querySelector(`.nav-button[data-view="${viewId}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Ocultar burbuja IA y cerrar chat SI NO estamos en la vista de módulos
+    const chatFab = document.getElementById('chatFab');
+    const chatModal = document.getElementById('chatModal');
+    
+    if (viewId !== 'modulos') {
+        if (chatFab) chatFab.classList.remove('visible');
+        if (chatModal) chatModal.classList.remove('open');
+    } else {
+        if (chatFab) chatFab.classList.add('visible');
+    }
+
+    if (viewId === 'dashboard') renderDashboard();
+    if (viewId === 'materias') renderMaterias();
+    if (viewId === 'recompensas') renderRecompensas();
+    if (viewId === 'progreso') setTimeout(renderProgresoCharts, 100);
+    if (viewId === 'admin-panel' && currentUser?.role === 'admin') renderAdminUsers();
+    if (viewId === 'docente-panel' && currentUser?.role === 'docente') renderTeacherPanel();
+}
+
+// ========== EVENT LISTENERS & AUTH ==========
+document.getElementById('loginForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
+    const found = users.find(u => u.username === username && u.password === password);
 
-    const user = appState.users.find(u => u.username === username && u.password === password);
-
-    if (user) {
-        appState.currentUser = user;
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        showMainApp();
-        renderDashboard();
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
+    if (found) {
+        currentUser = found;
+        document.getElementById('userNameDisplay').innerText = found.name || found.username;
+        document.getElementById('userRoleDisplay').innerText = found.role.toUpperCase();
+        document.getElementById('authContainer').classList.add('hidden');
+        document.getElementById('appContainer').classList.add('active');
+        applyRoleVisibility();
+        switchView('materias');
     } else {
-        alert('Usuario o contraseña incorrectos');
+        alert('Credenciales inválidas. Prueba con ALU001/123, DOC001/123 o ADMIN001/123');
     }
-}
+});
 
-function handleRegister(e) {
+document.getElementById('registerForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    
-    const username = document.getElementById('regUsername').value;
-    const email = document.getElementById('regEmail').value;
-    const name = document.getElementById('regName').value;
-    const password = document.getElementById('regPassword').value;
+    const newUser = {
+        username: document.getElementById('regUsername').value,
+        password: document.getElementById('regPassword').value,
+        email: document.getElementById('regEmail').value,
+        name: document.getElementById('regName').value,
+        role: 'alumno',
+        puntos: 0,
+        nivel: 1,
+        logros: 0,
+        totalLogros: 24,
+        materias: [],
+        recent: []
+    };
 
-    // Validate username format
-    if (!username.startsWith('ALU') && !username.startsWith('DOC') && !username.startsWith('ADMIN')) {
-        alert('El usuario debe comenzar con ALU, DOC o ADMIN');
-        return;
-    }
-
-    // Check if username exists
-    if (appState.users.find(u => u.username === username)) {
+    if (users.find(u => u.username === newUser.username)) {
         alert('El usuario ya existe');
         return;
     }
 
-    // Determine role
-    let role = 'alumno';
-    if (username.startsWith('DOC')) role = 'docente';
-    if (username.startsWith('ADMIN')) role = 'admin';
+    users.push(newUser);
+    saveUsers();
+    alert('Registro exitoso. Ahora inicia sesión.');
+    document.querySelector('.tab-button[data-tab="login"]').click();
+});
 
-    // Create user
-    const newUser = {
-        id: username,
-        username,
-        password,
-        name,
-        email,
-        role
+document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+        document.getElementById(tab + 'Form').classList.add('active');
+    });
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    currentUser = null;
+    document.getElementById('appContainer').classList.remove('active');
+    document.getElementById('authContainer').classList.remove('hidden');
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+});
+
+document.querySelectorAll('.nav-button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const view = btn.getAttribute('data-view');
+        if (view) switchView(view);
+    });
+});
+
+const backBtn = document.getElementById('backToMateriasBtn');
+if (backBtn) {
+    backBtn.addEventListener('click', () => {
+        switchView('materias');
+    });
+}
+
+const modal = document.getElementById('materiaModal');
+document.getElementById('addMateriaBtn')?.addEventListener('click', () => {
+    if (modal) modal.style.display = 'flex';
+});
+
+document.querySelectorAll('.modal-close').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (modal) modal.style.display = 'none';
+    });
+});
+
+document.getElementById('materiaForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const newMateria = {
+        id: Date.now(),
+        nombre: document.getElementById('materiaName').value,
+        desc: document.getElementById('materiaDesc').value,
+        icon: document.getElementById('materiaIcon').value || '📘'
+    };
+    materiasGlobal.push(newMateria);
+    saveMaterias();
+    renderMaterias();
+    if (modal) modal.style.display = 'none';
+    document.getElementById('materiaForm').reset();
+});
+
+document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-admin-tab');
+        document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(tab + 'Tab').classList.add('active');
+    });
+});
+
+document.querySelectorAll('.docente-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-docente-tab');
+        document.querySelectorAll('.docente-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.docente-tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(tab + 'Tab').classList.add('active');
+    });
+});
+
+document.getElementById('addCourseBtn')?.addEventListener('click', () => {
+    alert('Funcionalidad de agregar curso en desarrollo');
+});
+
+// ========== CHAT IA FLOTANTE - VERSIÓN SIMPLE Y FUNCIONAL ==========
+document.addEventListener('DOMContentLoaded', function() {
+    const chatFab = document.getElementById('chatFab');
+    const chatModal = document.getElementById('chatModal');
+    const chatClose = document.getElementById('chatCloseBtn');
+    const chatSend = document.getElementById('chatSendBtn');
+    const chatInput = document.getElementById('chatInput');
+    const chatMessages = document.getElementById('chatMessages');
+
+    // Función para cerrar el chat
+    function cerrarChat() {
+        chatModal.classList.remove('open');
+        console.log('Chat cerrado');
+    }
+
+    // Función para abrir el chat
+    function abrirChat() {
+        chatModal.classList.add('open');
+        console.log('Chat abierto');
+    }
+
+    // Evento para la burbuja (toggle)
+    chatFab.onclick = function(e) {
+        e.stopPropagation();
+        if (chatModal.classList.contains('open')) {
+            cerrarChat();
+        } else {
+            abrirChat();
+        }
     };
 
-    appState.users.push(newUser);
-    appState.currentUser = newUser;
-    localStorage.setItem('currentUser', JSON.stringify(newUser));
+    // Evento para el botón X
+    chatClose.onclick = function(e) {
+        e.stopPropagation();
+        cerrarChat();
+    };
 
-    showMainApp();
-    renderDashboard();
-    document.getElementById('registerForm').reset();
-
-    alert('¡Usuario registrado exitosamente!');
-}
-
-function handleLogout() {
-    appState.currentUser = null;
-    localStorage.removeItem('currentUser');
-    showAuthContainer();
-    document.getElementById('loginForm').reset();
-    document.getElementById('registerForm').reset();
-}
-
-// ===== UI VISIBILITY =====
-function showAuthContainer() {
-    document.getElementById('authContainer').classList.remove('inactive');
-    document.getElementById('appContainer').classList.add('hidden');
-}
-
-function showMainApp() {
-    document.getElementById('authContainer').classList.add('inactive');
-    document.getElementById('appContainer').classList.remove('hidden');
-    updateUserDisplay();
-    updateRoleElements();
-    renderMaterias();
-    renderRecompensas();
-    populateAdminPanel();
-}
-
-function updateUserDisplay() {
-    const user = appState.currentUser;
-    document.getElementById('userNameDisplay').textContent = user.name;
-    
-    const roleElement = document.getElementById('userRoleDisplay');
-    const roleText = user.role === 'admin' ? 'Administrador' : user.role === 'docente' ? 'Docente' : 'Estudiante';
-    roleElement.textContent = roleText;
-    
-    // Update role class for CSS
-    document.querySelector('.header-user').className = `header-user ${user.role}-role`;
-}
-
-function updateRoleElements() {
-    const user = appState.currentUser;
-    const roleClass = user.role + '-role';
-    
-    if (user.role === 'alumno') {
-        document.querySelectorAll('.student-section').forEach(el => el.style.display = 'block');
-        document.querySelectorAll('.teacher-section').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.admin-section').forEach(el => el.style.display = 'none');
-    } else if (user.role === 'docente') {
-        document.querySelectorAll('.student-section').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.teacher-section').forEach(el => el.style.display = 'block');
-        document.querySelectorAll('.admin-section').forEach(el => el.style.display = 'none');
-    } else if (user.role === 'admin') {
-        document.querySelectorAll('.student-section').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.teacher-section').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.admin-section').forEach(el => el.style.display = 'block');
-    }
-
-    // Show/hide role-specific buttons
-    document.querySelectorAll('.admin-only').forEach(el => {
-        el.style.display = user.role === 'admin' ? 'inline-flex' : 'none';
-    });
-
-    document.querySelectorAll('.docente-only').forEach(el => {
-        el.style.display = user.role === 'docente' ? 'inline-flex' : 'none';
-    });
-}
-
-// ===== NAVIGATION =====
-function switchView(e) {
-    const viewName = e.currentTarget.dataset.view;
-
-    // Update button active state
-    document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
-    e.currentTarget.classList.add('active');
-
-    // Update view visibility
-    document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
-    
-    // Hide role-locked views
-    if (viewName === 'admin-panel' && appState.currentUser.role !== 'admin') {
-        alert('Acceso denegado');
-        return;
-    }
-    if (viewName === 'docente-panel' && appState.currentUser.role !== 'docente') {
-        alert('Acceso denegado');
-        return;
-    }
-
-    document.getElementById(viewName + 'View').classList.add('active');
-}
-
-// ===== DASHBOARD =====
-function renderDashboard() {
-    const user = appState.currentUser;
-    
-    if (user.role === 'alumno' && appState.userProgress[user.username]) {
-        const progress = appState.userProgress[user.username];
-        document.getElementById('totalPoints').textContent = progress.points;
-        document.getElementById('currentLevel').textContent = progress.level;
-        document.getElementById('totalRewards').textContent = progress.unlockedRewards.length;
-    }
-}
-
-// ===== MATERIAS =====
-function renderMaterias() {
-    const container = document.getElementById('materiasGrid');
-    container.innerHTML = '';
-
-    appState.materias.forEach(materia => {
-        const card = document.createElement('div');
-        card.className = 'materia-card';
-        card.innerHTML = `
-            <div class="materia-icon">${materia.icon}</div>
-            <h4>${materia.name}</h4>
-            <p>${materia.description}</p>
-            <div class="materia-progress">
-                <div class="materia-progress-fill" style="width: ${materia.progress}%"></div>
-            </div>
-            <p style="font-size: 12px; color: #64748b;">${materia.progress}% Completado</p>
-            <div class="materia-actions">
-                <button class="btn btn-primary btn-small">Estudiar</button>
-                <button class="btn btn-outline btn-small" onclick="editMateria(${materia.id})" style="display: ${appState.currentUser.role === 'admin' || appState.currentUser.role === 'docente' ? 'inline' : 'none'}">Editar</button>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-}
-
-function openMateriaModal() {
-    document.getElementById('materiaModal').style.display = 'flex';
-    document.getElementById('materiaModalTitle').textContent = 'Nueva Materia';
-    document.getElementById('materiaForm').reset();
-}
-
-function editMateria(id) {
-    const materia = appState.materias.find(m => m.id === id);
-    if (materia) {
-        document.getElementById('materiaModalTitle').textContent = 'Editar Materia';
-        document.getElementById('materiaName').value = materia.name;
-        document.getElementById('materiaDesc').value = materia.description;
-        document.getElementById('materiaIcon').value = materia.icon;
-        document.getElementById('materiaForm').dataset.editId = id;
-        document.getElementById('materiaModal').style.display = 'flex';
-    }
-}
-
-function handleMateriaSubmit(e) {
-    e.preventDefault();
-    
-    const name = document.getElementById('materiaName').value;
-    const desc = document.getElementById('materiaDesc').value;
-    const icon = document.getElementById('materiaIcon').value || '📚';
-    const editId = e.target.dataset.editId;
-
-    if (editId) {
-        const materia = appState.materias.find(m => m.id === parseInt(editId));
-        if (materia) {
-            materia.name = name;
-            materia.description = desc;
-            materia.icon = icon;
+    // Cerrar con tecla ESC
+    document.onkeydown = function(e) {
+        if (e.key === 'Escape') {
+            cerrarChat();
         }
-    } else {
-        const newId = Math.max(...appState.materias.map(m => m.id)) + 1;
-        appState.materias.push({
-            id: newId,
-            name,
-            description: desc,
-            icon,
-            progress: 0
-        });
+    };
+
+    // Enviar mensaje
+    function enviarMensaje() {
+        const msg = chatInput.value.trim();
+        if (!msg) return;
+        chatMessages.innerHTML += `<div class="message user">${msg}</div>`;
+        chatInput.value = '';
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        setTimeout(() => {
+            chatMessages.innerHTML += `<div class="message bot">${responderIA(msg)}</div>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 500);
     }
 
-    closeModal();
-    renderMaterias();
-    delete e.target.dataset.editId;
+    chatSend.onclick = enviarMensaje;
+    chatInput.onkeypress = function(e) {
+        if (e.key === 'Enter') enviarMensaje();
+    };
+});
+
+if (chatSend) {
+    chatSend.addEventListener('click', enviarMensaje);
 }
 
-function closeModal() {
-    document.getElementById('materiaModal').style.display = 'none';
-    document.getElementById('materiaForm').reset();
-}
-
-// ===== RECOMPENSAS =====
-function renderRecompensas() {
-    const user = appState.currentUser;
-    const userData = appState.userProgress[user.username] || { unlockedRewards: [] };
-
-    // Recompensas desbloqueadas
-    const unlockedContainer = document.getElementById('unlockedRewards');
-    unlockedContainer.innerHTML = '';
-
-    appState.rewards
-        .filter(r => userData.unlockedRewards && userData.unlockedRewards.includes(r.id))
-        .forEach(reward => {
-            const card = createRewardCard(reward, true);
-            unlockedContainer.appendChild(card);
-        });
-
-    // Recompensas disponibles
-    const availableContainer = document.getElementById('availableRewards');
-    availableContainer.innerHTML = '';
-
-    appState.rewards
-        .filter(r => !userData.unlockedRewards || !userData.unlockedRewards.includes(r.id))
-        .forEach(reward => {
-            const card = createRewardCard(reward, false);
-            availableContainer.appendChild(card);
-        });
-}
-
-function createRewardCard(reward, unlocked) {
-    const card = document.createElement('div');
-    card.className = `reward-card ${unlocked ? 'unlocked' : ''}`;
-    card.innerHTML = `
-        <div class="reward-icon" style="opacity: ${unlocked ? 1 : 0.5}">${reward.icon}</div>
-        <div class="reward-name">${reward.name}</div>
-        <div class="reward-points">${reward.points} pts</div>
-        ${!unlocked ? '<p style="font-size: 10px; margin-top: 8px; color: #94a3b8;">Bloqueada</p>' : ''}
-    `;
-    return card;
-}
-
-// ===== IA ASISTENTE =====
-const iaResponses = {
-    'hola': 'Hola! Estoy aquí para ayudarte con tus preguntas. ¿Qué necesitas saber?',
-    'ayuda': 'Puedo ayudarte con preguntas sobre materias, explicar conceptos, resolver problemas y mucho más. ¿En qué tema necesitas ayuda?',
-    'matematica': 'En Matemáticas podemos estudiar Álgebra, Cálculo, Geometría y más. ¿Qué tema específico te interesa?',
-    'fisica': 'La Física es fascinante! Podemos hablar de Mecánica, Electricidad, Magnetismo, Termodinámica. ¿Cuál te interesa?',
-    'quimica': 'En Química exploramos la estructura atómica, reacciones químicas y la tabla periódica. ¿Qué quieres saber?',
-    'historia': 'La Historia nos enseña del pasado. Podemos hablar de diferentes épocas y civilizaciones. ¿Cuál te interesa?',
-    'biologia': 'La Biología estudia los organismos y sistemas vivos. ¿Qué tema te gustaría explorar?',
-    'default': 'Esa es una pregunta interesante. Te recomiendo estudiar más sobre el tema con los módulos disponibles. ¿Tienes otra pregunta?'
-};
-
-function sendIAMessage() {
-    const input = document.getElementById('iaInput');
-    const message = input.value.trim();
-    
-    if (!message) return;
-
-    // Add user message
-    addChatMessage(message, 'user');
-    input.value = '';
-
-    // Simulate IA response delay
-    setTimeout(() => {
-        const response = generateIAResponse(message);
-        addChatMessage(response, 'bot');
-    }, 500);
-}
-
-function generateIAResponse(userMessage) {
-    const lowercaseMessage = userMessage.toLowerCase();
-    
-    for (const [key, response] of Object.entries(iaResponses)) {
-        if (lowercaseMessage.includes(key)) {
-            return response;
-        }
-    }
-    
-    return iaResponses.default;
-}
-
-function addChatMessage(message, sender) {
-    const chatBox = document.getElementById('iaChat');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${sender}-message`;
-    messageDiv.innerHTML = `
-        <div class="message-content">${message}</div>
-    `;
-    chatBox.appendChild(messageDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-// ===== ADMIN PANEL =====
-function switchAdminTab(e) {
-    const tabName = e.currentTarget.dataset.adminTab;
-    
-    document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
-    e.currentTarget.classList.add('active');
-    
-    document.querySelectorAll('.admin-tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById(tabName + 'Tab').classList.add('active');
-}
-
-function populateAdminPanel() {
-    if (appState.currentUser.role !== 'admin') return;
-
-    // Usuarios
-    const tbody = document.getElementById('usuariosTableBody');
-    tbody.innerHTML = '';
-    appState.users.forEach(user => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${user.username}</td>
-            <td>${user.email}</td>
-            <td>${user.role}</td>
-            <td><span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px;">Activo</span></td>
-            <td>
-                <button class="btn btn-small">Editar</button>
-                <button class="btn btn-small" style="color: #ef4444;">Eliminar</button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-
-    // Cursos
-    const cursosBody = document.getElementById('cursosTableBody');
-    cursosBody.innerHTML = '';
-    ['Matemáticas Avanzadas', 'Física General', 'Química Orgánica'].forEach((course, idx) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${course}</td>
-            <td>Prof. ${['Carlos López', 'Ana Martínez', 'Pedro González'][idx]}</td>
-            <td>${[45, 38, 32][idx]} estudiantes</td>
-            <td><span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px;">Activo</span></td>
-            <td>
-                <button class="btn btn-small">Editar</button>
-                <button class="btn btn-small" style="color: #ef4444;">Eliminar</button>
-            </td>
-        `;
-        cursosBody.appendChild(row);
+if (chatInput) {
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') enviarMensaje();
     });
 }
-
-// ===== DOCENTE PANEL =====
-function switchDocenteTab(e) {
-    const tabName = e.currentTarget.dataset.docenteTab;
-    
-    document.querySelectorAll('.docente-tab-btn').forEach(btn => btn.classList.remove('active'));
-    e.currentTarget.classList.add('active');
-    
-    document.querySelectorAll('.docente-tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById(tabName + 'Tab').classList.add('active');
-}
-
-// ===== LOCAL STORAGE =====
-function loadFromLocalStorage() {
-    const saved = localStorage.getItem('appState');
-    if (saved) {
-        const data = JSON.parse(saved);
-        Object.assign(appState, data);
-    }
-}
-
-function saveToLocalStorage() {
-    localStorage.setItem('appState', JSON.stringify(appState));
-}
-
-// Auto-save changes
-window.addEventListener('beforeunload', saveToLocalStorage);
