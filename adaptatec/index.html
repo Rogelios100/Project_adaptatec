@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- API Client -->
+    <script src="js/api.js" type="module"></script>
 </head>
 <body>
     <!-- LOGIN MODAL -->
@@ -61,7 +63,7 @@
             </form>
 
             <div class="auth-footer">
-                <p class="demo-info">🎮 Demo: Usa ALU001, DOC001 o ADMIN001 con contraseña: "123"</p>
+                <p class="demo-info">🎮 Demo: Usa ALU001 o ADMIN001 con contraseña: "123"</p>
             </div>
         </div>
     </div>
@@ -98,9 +100,6 @@
                     </button>
                     <button class="nav-button admin-only" data-view="admin-panel" style="display:none;">
                         ⚙️ Panel Admin
-                    </button>
-                    <button class="nav-button docente-only" data-view="docente-panel" style="display:none;">
-                        📋 Panel Docente
                     </button>
                 </nav>
             </aside>
@@ -315,82 +314,174 @@
                 <section id="adminPanelView" class="view">
                     <div class="view-header">
                         <h2>⚙️ Panel de Administración</h2>
+                        <p class="admin-header-desc">Gestión completa del sistema Adaptatec</p>
                     </div>
                     <div class="admin-panel">
                         <div class="admin-tabs">
-                            <button class="admin-tab-btn active" data-admin-tab="usuarios">Gestión de Usuarios</button>
-                            <button class="admin-tab-btn" data-admin-tab="cursos">Gestión de Cursos</button>
-                            <button class="admin-tab-btn" data-admin-tab="reportes">Reportes</button>
+                            <button class="admin-tab-btn active" data-admin-tab="dashboard">📊 Dashboard</button>
+                            <button class="admin-tab-btn" data-admin-tab="usuarios">👥 Usuarios</button>
+                            <button class="admin-tab-btn" data-admin-tab="materias">📚 Materias</button>
+                            <button class="admin-tab-btn" data-admin-tab="sistema">🔧 Sistema</button>
                         </div>
 
-                        <div id="usuariosTab" class="admin-tab-content active">
-                            <h3>Usuarios del Sistema</h3>
+                        <!-- DASHBOARD TAB -->
+                        <div id="dashboardTab" class="admin-tab-content active">
+                            <h3>📊 Dashboard General</h3>
+                            <div class="dashboard-grid">
+                                <div class="dashboard-card primary">
+                                    <div class="card-header">👥 Usuarios Registrados</div>
+                                    <div class="card-number" id="totalUsers">0</div>
+                                    <div class="card-footer">Usuarios activos en el sistema</div>
+                                </div>
+                                <div class="dashboard-card success">
+                                    <div class="card-header">📚 Materias Disponibles</div>
+                                    <div class="card-number" id="totalMaterias">6</div>
+                                    <div class="card-footer">Cursos en el catálogo</div>
+                                </div>
+                                <div class="dashboard-card info">
+                                    <div class="card-header">⏱️ Horas Estudiadas</div>
+                                    <div class="card-number" id="totalHours">0</div>
+                                    <div class="card-footer">Horas acumuladas</div>
+                                </div>
+                                <div class="dashboard-card warning">
+                                    <div class="card-header">🤖 Solicitudes de IA</div>
+                                    <div class="card-number" id="aiRequests">0</div>
+                                    <div class="card-footer">Preguntas procesadas</div>
+                                </div>
+                            </div>
+                            <div class="activity-section">
+                                <h4>📈 Estadísticas Recientes</h4>
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr><th>Métrica</th><th>Valor</th><th>Cambio</th><th>Estado</th></tr>
+                                    </thead>
+                                    <tbody id="statsTableBody">
+                                        <tr><td>Tasa de Completitud</td><td>78%</td><td>+5%</td><td><span class="badge success">↑ Mejorando</span></td></tr>
+                                        <tr><td>Promedio de Sesión</td><td>45 min</td><td>+3 min</td><td><span class="badge success">↑ Mejorando</span></td></tr>
+                                        <tr><td>Satisfacción de Usuarios</td><td>92%</td><td>+2%</td><td><span class="badge success">↑ Mejorando</span></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- USUARIOS TAB -->
+                        <div id="usuariosTab" class="admin-tab-content">
+                            <div class="admin-section-header">
+                                <h3>👥 Gestión de Usuarios</h3>
+                                <button class="btn btn-small btn-success" id="exportUsersBtn">📥 Exportar</button>
+                            </div>
+                            <div class="filter-bar">
+                                <input type="text" id="userFilterInput" placeholder="🔍 Buscar usuario..." class="filter-input">
+                                <select id="roleFilterSelect" class="filter-select">
+                                    <option value="">Todos los roles</option>
+                                    <option value="alumno">Alumno</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
                             <table class="admin-table">
                                 <thead>
-                                    <tr><th>Usuario</th><th>Email</th><th>Rol</th><th>Acciones</th></tr>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>Email</th>
+                                        <th>Rol</th>
+                                        <th>Nivel</th>
+                                        <th>Puntos</th>
+                                        <th>Desde</th>
+                                        <th>Acciones</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="usuariosTableBody"></tbody>
                             </table>
                         </div>
 
-                        <div id="cursosTab" class="admin-tab-content">
-                            <h3>Cursos del Sistema</h3>
-                            <button class="btn btn-primary" id="addCourseBtn">+ Nuevo Curso</button>
-                            <table class="admin-table">
-                                <thead><tr><th>Curso</th><th>Docente</th><th>Estudiantes</th><th>Acciones</th></tr></thead>
-                                <tbody id="cursosTableBody"></tbody>
-                            </table>
+                        <!-- MATERIAS TAB -->
+                        <div id="materiasTab" class="admin-tab-content">
+                            <div class="admin-section-header">
+                                <h3>📚 Gestión de Materias</h3>
+                                <button class="btn btn-small btn-primary" id="addMateriaBtn">+ Nueva Materia</button>
+                            </div>
+                            <div class="materias-grid">
+                                <div class="materia-card">
+                                    <div class="materia-icon">📘</div>
+                                    <h4>Algoritmos</h4>
+                                    <p>12 módulos • 45 estudiantes</p>
+                                    <div class="materia-actions">
+                                        <button class="btn btn-small">Editar</button>
+                                        <button class="btn btn-small btn-danger">Eliminar</button>
+                                    </div>
+                                </div>
+                                <div class="materia-card">
+                                    <div class="materia-icon">🌐</div>
+                                    <h4>Desarrollo Web</h4>
+                                    <p>15 módulos • 38 estudiantes</p>
+                                    <div class="materia-actions">
+                                        <button class="btn btn-small">Editar</button>
+                                        <button class="btn btn-small btn-danger">Eliminar</button>
+                                    </div>
+                                </div>
+                                <div class="materia-card">
+                                    <div class="materia-icon">🗄️</div>
+                                    <h4>Base de Datos</h4>
+                                    <p>10 módulos • 52 estudiantes</p>
+                                    <div class="materia-actions">
+                                        <button class="btn btn-small">Editar</button>
+                                        <button class="btn btn-small btn-danger">Eliminar</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div id="reportesTab" class="admin-tab-content">
-                            <h3>Reportes del Sistema</h3>
-                            <div class="reports-grid">
-                                <div class="report-card"><h4>Usuarios Activos Hoy</h4><p class="report-number">1,234</p></div>
-                                <div class="report-card"><h4>Promedio de Sesiones</h4><p class="report-number">45 min</p></div>
-                                <div class="report-card"><h4>Tasa de Completitud</h4><p class="report-number">78%</p></div>
-                                <div class="report-card"><h4>Nuevos Usuarios</h4><p class="report-number">+23</p></div>
+                        <!-- SISTEMA TAB -->
+                        <div id="sistemaTab" class="admin-tab-content">
+                            <h3>🔧 Configuración del Sistema</h3>
+                            <div class="settings-section">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>Base de Datos</h4>
+                                        <p>Información del almacenamiento</p>
+                                    </div>
+                                    <div class="setting-content">
+                                        <p><strong>Ruta:</strong> ./adaptatec.db</p>
+                                        <p><strong>Tipo:</strong> SQLite3</p>
+                                        <button class="btn btn-small" id="backupDbBtn">💾 Respaldar BD</button>
+                                        <button class="btn btn-small" id="cleanDbBtn">🗑️ Limpiar Cache</button>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>Integración de IA</h4>
+                                        <p>Configuración de Google Gemini</p>
+                                    </div>
+                                    <div class="setting-content">
+                                        <p id="geminiStatus"><strong>Estado:</strong> <span class="badge info">Configurado</span></p>
+                                        <p><strong>Modelo:</strong> Gemini Pro</p>
+                                        <button class="btn btn-small" id="testGeminiBtn">🧪 Probar Conexión</button>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <h4>Versión del Sistema</h4>
+                                        <p>Información de la aplicación</p>
+                                    </div>
+                                    <div class="setting-content">
+                                        <p><strong>Versión:</strong> 2.0 (Node.js)</p>
+                                        <p><strong>Última actualización:</strong> 17/04/2026</p>
+                                        <p><strong>API Base:</strong> http://localhost:3000</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <!-- DOCENTE PANEL VIEW -->
-                <section id="docentePanelView" class="view">
-                    <div class="view-header">
-                        <h2>📋 Panel de Docente</h2>
-                    </div>
-                    <div class="docente-panel">
-                        <div class="docente-tabs">
-                            <button class="docente-tab-btn active" data-docente-tab="mis-cursos">Mis Cursos</button>
-                            <button class="docente-tab-btn" data-docente-tab="estudiantes">Estudiantes</button>
-                            <button class="docente-tab-btn" data-docente-tab="calificaciones">Calificaciones</button>
-                        </div>
-
-                        <div id="misCursosTab" class="docente-tab-content active">
-                            <h3>Cursos Impartidos</h3>
-                            <button class="btn btn-primary" id="createCourseBtn">+ Crear Nuevo Curso</button>
-                            <div class="courses-list" id="teacherCoursesList"></div>
-                        </div>
-
-                        <div id="estudiantesTab" class="docente-tab-content">
-                            <h3>Mis Estudiantes</h3>
-                            <div class="students-list" id="studentsList"></div>
-                        </div>
-
-                        <div id="calificacionesTab" class="docente-tab-content">
-                            <h3>Registro de Calificaciones</h3>
-                            <table class="admin-table">
-                                <thead><tr><th>Estudiante</th><th>Curso</th><th>Calificación</th><th>Acciones</th></tr></thead>
-                                <tbody id="calificacionesTableBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
+                <!-- DOCENTE PANEL VIEW - ELIMINADO -->
             </main>
         </div>
     </div>
 
-    <script src="js/app.js"></script>
+    <script src="js/app.js" type="module"></script>
 
     <!-- BURBUJA FLOTANTE DE IA (Chatbot) -->
     <div id="chatFab" class="chat-fab">

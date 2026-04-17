@@ -1,56 +1,16 @@
-// ========== DATA MODEL ==========
-let users = JSON.parse(localStorage.getItem('adaptatec_users')) || [
-    {
-        username: "ALU001",
-        password: "123",
-        email: "juan.perez@universidad.edu",
-        name: "Juan David Pérez",
-        role: "alumno",
-        nivel: 12,
-        puntos: 87,
-        logros: 8,
-        totalLogros: 24,
-        horas: 23,
-        materias: [
-            { id: 1, name: "Algoritmos y Estructuras de Datos", progress: 75, modulosCompletados: 9, totalModulos: 12, horasEstudio: 24 },
-            { id: 2, name: "Desarrollo Web Avanzado", progress: 60, modulosCompletados: 9, totalModulos: 15, horasEstudio: 30 },
-            { id: 3, name: "Base de Datos", progress: 85, modulosCompletados: 8, totalModulos: 10, horasEstudio: 20 },
-            { id: 4, name: "Inteligencia Artificial", progress: 40, modulosCompletados: 5, totalModulos: 14, horasEstudio: 28 },
-            { id: 5, name: "Arquitectura de Software", progress: 55, modulosCompletados: 6, totalModulos: 11, horasEstudio: 22 },
-            { id: 6, name: "Seguridad Informática", progress: 30, modulosCompletados: 4, totalModulos: 13, horasEstudio: 26 }
-        ],
-        recent: [
-            "Completaste el módulo de Árboles Binarios - Hace 2 horas",
-            "Desbloqueaste el logro 'Racha de 7 días' - Hace 5 horas",
-            "Realizaste 15 preguntas a la IA - Hace 1 día",
-            "Obtuviste 100% en el examen de SQL - Hace 2 días"
-        ]
-    },
-    {
-        username: "DOC001",
-        password: "123",
-        email: "doc@uni.edu",
-        name: "Dr. Martínez",
-        role: "docente",
-        cursos: ["Matemáticas Avanzadas", "Física General"]
-    },
-    {
-        username: "ADMIN001",
-        password: "123",
-        email: "admin@adaptatec.com",
-        name: "Admin Global",
-        role: "admin"
-    }
-];
+// ========== API IMPORTS ==========
+import * as API from './api.js';
 
-let materiasGlobal = JSON.parse(localStorage.getItem('adaptatec_materias')) || [
-    { id: 1, nombre: "Algoritmos", desc: "Fundamentos de programación", icon: "📘" },
-    { id: 2, nombre: "Base de Datos", desc: "SQL y modelado", icon: "🗄️" },
-    { id: 3, nombre: "Desarrollo Web", desc: "HTML, CSS, JavaScript", icon: "🌐" }
-];
+// ========== DATA MODEL ==========
+// Los usuarios y materias ahora vienen del servidor
+let users = []; // Se cargarán desde el servidor
+let materiasGlobal = []; // Se cargarán desde el servidor
 
 let currentUser = null;
 let currentMateriaId = null;
+
+// Gemini Configuration - Ahora se maneja en el backend
+// Ya no necesitamos API key en el frontend
 
 // Chart instances
 let horasChart, califChart, materiasChart;
@@ -67,11 +27,11 @@ const modulosPorMateria = {
 
 // ========== UTILITIES ==========
 function saveUsers() {
-    localStorage.setItem('adaptatec_users', JSON.stringify(users));
+    // Ya no se necesita guardar en localStorage - los datos se sincronizan con el servidor
 }
 
 function saveMaterias() {
-    localStorage.setItem('adaptatec_materias', JSON.stringify(materiasGlobal));
+    // Ya no se necesita guardar en localStorage - los datos se sincronizan con el servidor
 }
 
 function calcularEstadisticasGenerales() {
@@ -173,18 +133,32 @@ function responderIA(pregunta) {
     return "Puedo ayudarte con temas de algoritmos, desarrollo web, bases de datos, IA, arquitectura de software y seguridad informática según el plan de estudios del TECNM. ¿Qué te gustaría aprender?";
 }
 
+// ========== GEMINI FUNCTIONS ==========
+async function obtenerRespuestaGemini(pregunta, materia = '') {
+    try {
+        // La API key ahora está en el backend, enviamos el token JWT
+        const respuesta = await API.apiGeminiQuestion(
+            pregunta,
+            materia,
+            `Contexto educativo del TECNM para Ingeniería en Sistemas`
+        );
+        return respuesta;
+    } catch (error) {
+        console.error('Error con Gemini:', error);
+        return "Disculpa, tuve un problema contactando con la IA. " + responderIA(pregunta);
+    }
+}
+
 // ========== RENDER FUNCTIONS ==========
 function renderDashboard() {
     if (!currentUser) return;
 
     const isStudent = currentUser.role === 'alumno';
-    const isTeacher = currentUser.role === 'docente';
     const isAdmin = currentUser.role === 'admin';
 
     document.querySelectorAll('.student-profile-view, .student-section').forEach(el => {
         el.style.display = isStudent ? 'block' : 'none';
     });
-    document.querySelector('.teacher-section').style.display = isTeacher ? 'block' : 'none';
     document.querySelector('.admin-section').style.display = isAdmin ? 'block' : 'none';
 
     if (isStudent) {
@@ -259,11 +233,12 @@ function renderMaterias() {
     // Colores de fondo para cada tarjeta
     const coloresCard = ['#eff6ff', '#f0fdf4', '#fff7ed', '#faf5ff', '#fff1f2', '#ecfeff'];
     
-    container.innerHTML = currentUser.materias.map((m, idx) => `
+    const materias = currentUser.materias || [];
+    container.innerHTML = materias.map((m, idx) => `
         <div class="materia-card" data-materia-id="${m.id}" style="background: ${coloresCard[idx % coloresCard.length]};">
             <div class="materia-header">
                 <h3>${m.name}</h3>
-                <span class="materia-icon">📘</span>
+                <span class="materia-icon">${m.icon || '📘'}</span>
             </div>
             <div class="materia-stats">
                 <span>📋 ${m.modulosCompletados}/${m.totalModulos} módulos</span>
@@ -425,35 +400,16 @@ function renderAdminUsers() {
     }
 }
 
-function renderTeacherPanel() {
-    const coursesContainer = document.getElementById('teacherCoursesList');
-    if (coursesContainer && currentUser?.role === 'docente') {
-        coursesContainer.innerHTML = (currentUser.cursos || []).map(c => `
-            <div class="course-card">
-                <h4>${c}</h4>
-                <p>45 estudiantes | 12 módulos</p>
-                <div class="course-actions">
-                    <button class="btn btn-small">Ver Detalles</button>
-                    <button class="btn btn-small">Editar</button>
-                </div>
-            </div>
-        `).join('');
-    }
-}
+// Función de panel de docente eliminada (solo alumnos y admin)
 
 function applyRoleVisibility() {
     const isAdmin = currentUser?.role === 'admin';
-    const isDocente = currentUser?.role === 'docente';
 
     document.querySelectorAll('.admin-only').forEach(el => {
         el.style.display = isAdmin ? 'flex' : 'none';
     });
-    document.querySelectorAll('.docente-only').forEach(el => {
-        el.style.display = isDocente ? 'flex' : 'none';
-    });
 
     if (isAdmin) renderAdminUsers();
-    if (isDocente) renderTeacherPanel();
 }
 
 function switchView(viewId) {
@@ -481,54 +437,53 @@ function switchView(viewId) {
     if (viewId === 'recompensas') renderRecompensas();
     if (viewId === 'progreso') setTimeout(renderProgresoCharts, 100);
     if (viewId === 'admin-panel' && currentUser?.role === 'admin') renderAdminUsers();
-    if (viewId === 'docente-panel' && currentUser?.role === 'docente') renderTeacherPanel();
 }
 
 // ========== EVENT LISTENERS & AUTH ==========
-document.getElementById('loginForm').addEventListener('submit', (e) => {
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
-    const found = users.find(u => u.username === username && u.password === password);
-
-    if (found) {
-        currentUser = found;
-        document.getElementById('userNameDisplay').innerText = found.name || found.username;
-        document.getElementById('userRoleDisplay').innerText = found.role.toUpperCase();
+    
+    try {
+        const user = await API.apiLogin(username, password);
+        
+        // Cargar perfil completo del usuario
+        currentUser = await API.apiGetProfile();
+        
+        document.getElementById('userNameDisplay').innerText = currentUser.name || currentUser.username;
+        document.getElementById('userRoleDisplay').innerText = currentUser.role.toUpperCase();
         document.getElementById('authContainer').classList.add('hidden');
         document.getElementById('appContainer').classList.add('active');
         applyRoleVisibility();
         switchView('materias');
-    } else {
-        alert('Credenciales inválidas. Prueba con ALU001/123, DOC001/123 o ADMIN001/123');
+    } catch (error) {
+        alert('Error: ' + error.message);
+        console.error('Login error:', error);
     }
 });
 
-document.getElementById('registerForm').addEventListener('submit', (e) => {
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const newUser = {
-        username: document.getElementById('regUsername').value,
-        password: document.getElementById('regPassword').value,
-        email: document.getElementById('regEmail').value,
-        name: document.getElementById('regName').value,
-        role: 'alumno',
-        puntos: 0,
-        nivel: 1,
-        logros: 0,
-        totalLogros: 24,
-        materias: [],
-        recent: []
-    };
-
-    if (users.find(u => u.username === newUser.username)) {
-        alert('El usuario ya existe');
-        return;
+    const username = document.getElementById('regUsername').value;
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    const name = document.getElementById('regName').value;
+    
+    try {
+        const newUser = await API.apiRegister(username, email, password, name, 'alumno');
+        alert('Registro exitoso. Ahora inicia sesión.');
+        
+        // Limpiar formularios
+        document.getElementById('registerForm').reset();
+        document.getElementById('loginForm').reset();
+        
+        // Cambiar a tab de login
+        document.querySelector('.tab-button[data-tab="login"]').click();
+    } catch (error) {
+        alert('Error: ' + error.message);
+        console.error('Register error:', error);
     }
-
-    users.push(newUser);
-    saveUsers();
-    alert('Registro exitoso. Ahora inicia sesión.');
-    document.querySelector('.tab-button[data-tab="login"]').click();
 });
 
 document.querySelectorAll('.tab-button').forEach(btn => {
@@ -542,6 +497,7 @@ document.querySelectorAll('.tab-button').forEach(btn => {
 });
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
+    API.apiLogout();
     currentUser = null;
     document.getElementById('appContainer').classList.remove('active');
     document.getElementById('authContainer').classList.remove('hidden');
@@ -599,15 +555,7 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     });
 });
 
-document.querySelectorAll('.docente-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const tab = btn.getAttribute('data-docente-tab');
-        document.querySelectorAll('.docente-tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('.docente-tab-content').forEach(c => c.classList.remove('active'));
-        document.getElementById(tab + 'Tab').classList.add('active');
-    });
-});
+// Event listeners de panel de docente eliminados
 
 document.getElementById('addCourseBtn')?.addEventListener('click', () => {
     alert('Funcionalidad de agregar curso en desarrollo');
@@ -658,16 +606,37 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Enviar mensaje
-    function enviarMensaje() {
+    async function enviarMensaje() {
         const msg = chatInput.value.trim();
         if (!msg) return;
+        
         chatMessages.innerHTML += `<div class="message user">${msg}</div>`;
         chatInput.value = '';
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        setTimeout(() => {
-            chatMessages.innerHTML += `<div class="message bot">${responderIA(msg)}</div>`;
+        
+        // Mostrar indicador de carga
+        const loadingMsg = document.createElement('div');
+        loadingMsg.className = 'message bot loading';
+        loadingMsg.innerHTML = '⏳ Procesando tu pregunta...';
+        chatMessages.appendChild(loadingMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        try {
+            // Obtener respuesta de Gemini o fallback local
+            const respuesta = await obtenerRespuestaGemini(msg, currentMateriaId);
+            
+            // Remover mensaje de carga
+            chatMessages.removeChild(loadingMsg);
+            
+            // Agregar respuesta
+            chatMessages.innerHTML += `<div class="message bot">${respuesta}</div>`;
             chatMessages.scrollTop = chatMessages.scrollHeight;
-        }, 500);
+        } catch (error) {
+            console.error('Error:', error);
+            chatMessages.removeChild(loadingMsg);
+            chatMessages.innerHTML += `<div class="message bot">❌ Error al procesar la pregunta. Intenta de nuevo.</div>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
     }
 
     chatSend.onclick = enviarMensaje;
@@ -685,3 +654,6 @@ if (chatInput) {
         if (e.key === 'Enter') enviarMensaje();
     });
 }
+
+// ========== GEMINI CONFIGURATION LISTENERS ==========
+// Configuración de Gemini ahora se maneja en el backend
