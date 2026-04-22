@@ -207,11 +207,11 @@ export function getCurrentToken() {
 }
 
 /**
- * Enviar pregunta a Gemini
+ * Enviar pregunta a Groq
  */
-export async function apiGeminiQuestion(pregunta, materia = '', contexto = '') {
+export async function apiGroqQuestion(pregunta, materia = '', contexto = '') {
   try {
-    const response = await fetch(`${API_BASE}/gemini`, {
+    const response = await fetch(`${API_BASE}/groq`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -222,12 +222,15 @@ export async function apiGeminiQuestion(pregunta, materia = '', contexto = '') {
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Error al procesar con Gemini');
+      throw new Error(data.error || 'Error al procesar con Groq');
     }
 
     return data.respuesta;
   } catch (error) {
-    console.error('Error en apiGeminiQuestion:', error);
+    console.error('Error en apiGroqQuestion:', error);
     throw error;
   }
 }
+
+// Alias para compatibilidad con código antiguo
+export const apiGeminiQuestion = apiGroqQuestion;

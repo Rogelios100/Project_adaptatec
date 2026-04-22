@@ -1,5 +1,5 @@
 /**
- * Logger Profesional para Gemini API
+ * Logger Profesional para Groq API
  * Registra errores, reintentos y estadísticas
  */
 
@@ -10,12 +10,12 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const LOGS_DIR = path.join(__dirname, '..', 'logs', 'gemini');
+const LOGS_DIR = path.join(__dirname, '..', 'logs', 'groq');
 const ERROR_LOG_FILE = path.join(LOGS_DIR, 'errors.json');
 const STATS_LOG_FILE = path.join(LOGS_DIR, 'stats.json');
 const MAX_LOG_SIZE = 1000; // Máximo 1000 registros por archivo
 
-class GeminiLogger {
+class GroqLogger {
   constructor() {
     this.stats = {
       totalRequests: 0,
@@ -47,7 +47,7 @@ class GeminiLogger {
         this.stats = { ...this.stats, ...parsed };
       }
 
-      console.log('✅ Sistema de logging inicializado');
+      console.log('✅ Sistema de logging de Groq inicializado');
     } catch (error) {
       console.error('❌ Error al inicializar logging:', error.message);
     }
@@ -69,7 +69,7 @@ class GeminiLogger {
       statusCode: 200
     };
 
-    console.log(`✅ [Gemini] Solicitud exitosa (${responseTime}ms)`);
+    console.log(`✅ [Groq] Solicitud exitosa (${responseTime}ms)`);
     this._appendToLog(ERROR_LOG_FILE, entry);
   }
 
@@ -98,7 +98,7 @@ class GeminiLogger {
     };
 
     const icon = statusCode === 503 ? '⚠️' : '❌';
-    console.error(`${icon} [Gemini] Error ${statusCode} - ${message} (Intento ${attempts})`);
+    console.error(`${icon} [Groq] Error ${statusCode} - ${message} (Intento ${attempts})`);
     
     this._appendToLog(ERROR_LOG_FILE, entry);
   }
@@ -117,7 +117,7 @@ class GeminiLogger {
       materia
     };
 
-    console.log(`📦 [Gemini] Respuesta desde caché`);
+    console.log(`📦 [Groq] Respuesta desde caché`);
     this._appendToLog(ERROR_LOG_FILE, entry);
   }
 
@@ -137,7 +137,7 @@ class GeminiLogger {
       materia
     };
 
-    console.log(`🔄 [Gemini] Usando respuesta fallback (${reason})`);
+    console.log(`🔄 [Groq] Usando respuesta fallback (${reason})`);
     this._appendToLog(ERROR_LOG_FILE, entry);
   }
 
@@ -154,7 +154,7 @@ class GeminiLogger {
       pregunta: pregunta.substring(0, 100)
     };
 
-    console.log(`⏳ [Gemini] Reintento ${attempt} programado en ${delay}ms`);
+    console.log(`⏳ [Groq] Reintento ${attempt} programado en ${delay}ms`);
     this._appendToLog(ERROR_LOG_FILE, entry);
   }
 
@@ -315,4 +315,4 @@ class GeminiLogger {
   }
 }
 
-export default new GeminiLogger();
+export default new GroqLogger();

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { run, get } from '../config/database.js';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'adaptatec_default_secret';
 const router = express.Router();
 
 // REGISTRARSE
@@ -37,7 +38,7 @@ router.post('/register', async (req, res) => {
     // Generar token
     const token = jwt.sign(
       { id: result.id, username, role: role || 'alumno' },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -76,7 +77,7 @@ router.post('/login', async (req, res) => {
     // Generar token
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 

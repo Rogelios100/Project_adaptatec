@@ -8,7 +8,7 @@ import { initializeDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import materiasRoutes from './routes/materias.js';
-import geminiRoutes from './routes/gemini.js';
+import groqRoutes from './routes/groq.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -39,7 +39,8 @@ app.use(express.static(path.join(__dirname, 'adaptatec')));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/materias', materiasRoutes);
-app.use('/api/gemini', geminiRoutes);
+app.use('/api/gemini', groqRoutes);
+app.use('/api/groq', groqRoutes);
 
 // Ruta de verificación de salud
 app.get('/api/health', (req, res) => {

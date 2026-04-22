@@ -58,7 +58,7 @@ async function callGroqAPI(messages, apiKey) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'mixtral-8x7b-32768',
+        model: 'llama-3.3-70b-versatile', // Modelo recomendado para educación
         messages: messages,
         temperature: 0.7,
         max_tokens: 1024,
@@ -92,8 +92,17 @@ router.post('/', verifyToken, async (req, res) => {
   // ========== VALIDACIONES INICIALES ==========
   const configCheck = validateGroqConfig();
   if (!configCheck.valid) {
-    groqLogger.logError(400, 'API key not configured', 1, pregunta, materia);
-    return res.status(400).json({ error: configCheck.error });
+    const fallbackResponse = getFallbackResponse(materia, { statusCode: 503 });
+    groqLogger.logFallback(503, pregunta, materia, 'GROQ_API_KEY no configurada');
+
+    return res.status(200).json({
+      respuesta: fallbackResponse,
+      source: 'fallback',
+      reason: configCheck.error,
+      statusCode: 503,
+      responseTime: Date.now() - startTime,
+      warning: '⚠️ Groq no está configurado. Respuesta de respaldo en uso.'
+    });
   }
 
   if (!pregunta || !pregunta.trim()) {
@@ -101,6 +110,7 @@ router.post('/', verifyToken, async (req, res) => {
   }
 
   // ========== VERIFICAR CACHÉ ==========
+  //console.log(typeof req.body.materia, req.body.materia);
   const cachedResponse = groqCache.get(pregunta, materia);
   if (cachedResponse) {
     groqLogger.logCacheHit(pregunta, materia);

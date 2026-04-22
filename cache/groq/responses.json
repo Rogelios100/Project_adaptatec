@@ -1,0 +1,16 @@
+[
+  {
+    "key": "aG9sYXwx",
+    "pregunta": "hola",
+    "materia": 1,
+    "respuesta": "¡Hola! Me alegra que estés aquí. ¿En qué puedo ayudarte con respecto a tu materia de Ingeniería en Sistemas en el TECNM? ¿Tienes alguna pregunta o necesitas ayuda con un tema específico? Estoy aquí para ayudarte. ¿Cuál es la materia que estás estudiando actualmente?",
+    "timestamp": 1776833158364
+  },
+  {
+    "key": "cXXDqSBlcyB1biDDoXJib2wgYXZsP3wx",
+    "pregunta": "Qué es un árbol avl?",
+    "materia": 1,
+    "respuesta": "Un árbol AVL (Adelson-Velskii-Landis) es un tipo de árbol binario de búsqueda autoequilibrado. Fue inventado por los científicos informáticos soviéticos Georgy Adelson-Velsky y Evgenii Landis en 1962.\n\n**Características clave:**\n\n1. **Balanceo**: Un árbol AVL se mantiene equilibrado, lo que significa que la altura de los subárboles izquierdo y derecho de cualquier nodo no puede diferir en más de 1.\n2. **Búsqueda**: Los árboles AVL permiten realizar búsquedas eficientes, ya que los nodos están ordenados de manera que todos los nodos en el subárbol izquierdo de un nodo tienen una clave menor que la clave del nodo, y todos los nodos en el subárbol derecho tienen una clave mayor.\n3. **Inserción y eliminación**: Los árboles AVL pueden insertar y eliminar nodos de manera eficiente, manteniendo el balanceo del árbol.\n\n**Ventajas:**\n\n1. **Búsqueda rápida**: Los árboles AVL permiten realizar búsquedas en O(log n) tiempo, donde n es el número de nodos en el árbol.\n2. **Inserción y eliminación eficientes**: Los árboles AVL pueden insertar y eliminar nodos en O(log n) tiempo.\n\n**Ejemplo práctico:**\n\nSupongamos que tenemos un árbol AVL con los siguientes nodos:\n```\n    5\n   / \\\n  2   8\n / \\   \\\n1   3   9\n```\nEn este ejemplo, el árbol está equilibrado, ya que la altura de los subárboles izquierdo y derecho de cada nodo no difiere en más de 1. Si insertamos un nuevo nodo con la clave 6, el árbol se vería así:\n```\n    5\n   / \\\n  2   8\n / \\   / \\\n1   3 6   9\n```\nEl árbol sigue estando equilibrado, y la búsqueda de nodos sigue siendo eficiente.\n\nEn resumen, los árboles AVL son una estructura de datos eficiente para realizar búsquedas, inserciones y eliminaciones en un conjunto de datos, manteniendo el balanceo del árbol para garantizar una búsqueda rápida y eficiente.",
+    "timestamp": 1776833248964
+  }
+]

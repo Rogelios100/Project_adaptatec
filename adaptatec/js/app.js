@@ -133,18 +133,18 @@ function responderIA(pregunta) {
     return "Puedo ayudarte con temas de algoritmos, desarrollo web, bases de datos, IA, arquitectura de software y seguridad informática según el plan de estudios del TECNM. ¿Qué te gustaría aprender?";
 }
 
-// ========== GEMINI FUNCTIONS ==========
-async function obtenerRespuestaGemini(pregunta, materia = '') {
+// ========== GROQ FUNCTIONS ==========
+async function obtenerRespuestaGroq(pregunta, materia = '') {
     try {
         // La API key ahora está en el backend, enviamos el token JWT
-        const respuesta = await API.apiGeminiQuestion(
+        const respuesta = await API.apiGroqQuestion(
             pregunta,
             materia,
             `Contexto educativo del TECNM para Ingeniería en Sistemas`
         );
         return respuesta;
     } catch (error) {
-        console.error('Error con Gemini:', error);
+        console.error('Error con Groq:', error);
         return "Disculpa, tuve un problema contactando con la IA. " + responderIA(pregunta);
     }
 }
@@ -622,8 +622,8 @@ document.addEventListener('DOMContentLoaded', function() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
         try {
-            // Obtener respuesta de Gemini o fallback local
-            const respuesta = await obtenerRespuestaGemini(msg, currentMateriaId);
+            // Obtener respuesta de Groq o fallback local
+            const respuesta = await obtenerRespuestaGroq(msg, currentMateriaId);
             
             // Remover mensaje de carga
             chatMessages.removeChild(loadingMsg);
