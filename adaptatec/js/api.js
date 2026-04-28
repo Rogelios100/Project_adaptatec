@@ -28,12 +28,12 @@ function getAuthHeader() {
 /**
  * Registrar un nuevo usuario
  */
-export async function apiRegister(username, email, password, name, role = 'alumno') {
+export async function apiRegister(username, matricula, email, password, name, role = 'alumno') {
   try {
     const response = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password, name, role })
+      body: JSON.stringify({ username, matricula, email, password, name, role })
     });
 
     const data = await response.json();

@@ -1,8 +1,46 @@
 import express from 'express';
 import { verifyToken } from '../middleware/auth.js';
-import { get, all } from '../config/database.js';
+import { get, all, run } from '../config/database.js';
 
 const router = express.Router();
+
+async function computeUserProgressSummary(userId) {
+  const materias = await all(`
+    SELECT m.id, m.nombre, up.progress, up.horasEstudio, up.modulosCompletados
+    FROM materias m
+    LEFT JOIN user_progress up ON m.id = up.materiaId AND up.userId = ?
+    ORDER BY m.id
+  `, [userId]);
+
+  const totalHoras = materias.reduce((sum, m) => sum + (m.horasEstudio || 0), 0);
+  const progressValues = materias.map(m => m.progress || 0);
+  const promedioProgreso = materias.length ? Math.round(progressValues.reduce((sum, p) => sum + p, 0) / materias.length) : 0;
+  const materiasCompletadas = materias.filter(m => (m.progress || 0) >= 100).length;
+  const totalLogros = Math.max(12, materias.length * 4);
+  const logros = Math.min(totalLogros, materiasCompletadas * 2 + Math.floor(promedioProgreso / 25));
+  const nivel = Math.max(1, Math.min(20, Math.ceil(promedioProgreso / 10)));
+  const puntos = totalHoras + promedioProgreso + materiasCompletadas * 10;
+
+  return {
+    totalHoras,
+    promedioProgreso,
+    materiasCompletadas,
+    totalLogros,
+    logros,
+    nivel,
+    puntos,
+    materias
+  };
+}
+
+async function syncUserSummary(userId) {
+  const summary = await computeUserProgressSummary(userId);
+  await run(
+    'UPDATE users SET horas = ?, puntos = ?, logros = ?, totalLogros = ?, nivel = ? WHERE id = ?',
+    [summary.totalHoras, summary.puntos, summary.logros, summary.totalLogros, summary.nivel, userId]
+  );
+  return summary;
+}
 
 // Obtener perfil del usuario actual
 router.get('/profile', verifyToken, async (req, res) => {
@@ -21,6 +59,12 @@ router.get('/profile', verifyToken, async (req, res) => {
       ORDER BY m.id
     `, [req.user.id]);
 
+    const summary = await computeUserProgressSummary(req.user.id);
+    await run(
+      'UPDATE users SET horas = ?, puntos = ?, logros = ?, totalLogros = ?, nivel = ? WHERE id = ?',
+      [summary.totalHoras, summary.puntos, summary.logros, summary.totalLogros, summary.nivel, req.user.id]
+    );
+
     // Obtener actividades recientes
     const recent = await all(`
       SELECT descripcion FROM activities WHERE userId = ? ORDER BY createdAt DESC LIMIT 4
@@ -29,14 +73,15 @@ router.get('/profile', verifyToken, async (req, res) => {
     res.json({
       id: user.id,
       username: user.username,
+      matricula: user.matricula,
       email: user.email,
       name: user.name,
       role: user.role,
-      nivel: user.nivel,
-      puntos: user.puntos,
-      logros: user.logros,
-      totalLogros: user.totalLogros,
-      horas: user.horas,
+      nivel: summary.nivel,
+      puntos: summary.puntos,
+      logros: summary.logros,
+      totalLogros: summary.totalLogros,
+      horas: summary.totalHoras,
       materias: materias.map(m => ({
         id: m.id,
         name: m.nombre,
@@ -68,21 +113,15 @@ router.put('/progress/:materiaId', verifyToken, async (req, res) => {
     }
 
     // Actualizar o insertar progreso
-    await new Promise((resolve, reject) => {
-      const db = require('../config/database.js').getDatabase();
-      db.run(`
-        INSERT INTO user_progress (userId, materiaId, progress, modulosCompletados, horasEstudio, lastAccessed)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(userId, materiaId) 
-        DO UPDATE SET progress=?, modulosCompletados=?, horasEstudio=?, lastAccessed=CURRENT_TIMESTAMP
-      `, [req.user.id, materiaId, progress || 0, modulosCompletados || 0, horasEstudio || 0,
-          progress || 0, modulosCompletados || 0, horasEstudio || 0],
-        function(err) {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
+    await run(
+      `INSERT INTO user_progress (userId, materiaId, progress, modulosCompletados, horasEstudio, lastAccessed)
+       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       ON DUPLICATE KEY UPDATE progress = ?, modulosCompletados = ?, horasEstudio = ?, lastAccessed = CURRENT_TIMESTAMP`,
+      [req.user.id, materiaId, progress || 0, modulosCompletados || 0, horasEstudio || 0,
+       progress || 0, modulosCompletados || 0, horasEstudio || 0]
+    );
+
+    await syncUserSummary(req.user.id);
 
     res.json({ message: 'Progreso actualizado' });
   } catch (error) {

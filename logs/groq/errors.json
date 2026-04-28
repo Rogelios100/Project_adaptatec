@@ -1,7 +1,80 @@
-{"timestamp":"2026-04-22T04:02:39.265Z","type":"ERROR","statusCode":400,"message":"API key not configured","attempts":1,"pregunta":"¿Qué es programación?","materia":"Programación","severity":"LOW"}
-{"timestamp":"2026-04-22T04:07:02.419Z","type":"ERROR","statusCode":400,"message":"API key not configured","attempts":1,"pregunta":"¿Qué es programación?","materia":"Programación","severity":"LOW"}
-{"timestamp":"2026-04-22T04:09:20.812Z","type":"FALLBACK","statusCode":503,"reason":"GROQ_API_KEY no configurada","pregunta":"¿Qué es programación?","materia":"Programación"}
-{"timestamp":"2026-04-22T04:40:39.683Z","type":"ERROR","statusCode":400,"message":"{\"error\":{\"message\":\"The model `mixtral-8x7b-32768` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.\",\"type\":\"invalid_request_error\",\"code\":\"model_decommissioned\"}}\n","attempts":1,"pregunta":"hola","materia":2,"severity":"LOW"}
-{"timestamp":"2026-04-22T04:44:59.748Z","type":"ERROR","statusCode":404,"message":"{\"error\":{\"message\":\"The model `llama-3.3-70b-versatile-20240912` does not exist or you do not have access to it.\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\"}}\n","attempts":1,"pregunta":"Qué es un algoritmo?","materia":1,"severity":"LOW"}
-{"timestamp":"2026-04-22T04:45:58.366Z","type":"SUCCESS","pregunta":"hola","materia":1,"responseTime":524,"statusCode":200}
-{"timestamp":"2026-04-22T04:47:28.965Z","type":"SUCCESS","pregunta":"Qué es un árbol avl?","materia":1,"responseTime":2374,"statusCode":200}
+[
+  {
+    "timestamp": "2026-04-22T04:02:39.265Z",
+    "type": "ERROR",
+    "statusCode": 400,
+    "message": "API key not configured",
+    "attempts": 1,
+    "pregunta": "¿Qué es programación?",
+    "materia": "Programación",
+    "severity": "LOW"
+  },
+  {
+    "timestamp": "2026-04-22T04:07:02.419Z",
+    "type": "ERROR",
+    "statusCode": 400,
+    "message": "API key not configured",
+    "attempts": 1,
+    "pregunta": "¿Qué es programación?",
+    "materia": "Programación",
+    "severity": "LOW"
+  },
+  {
+    "timestamp": "2026-04-22T04:09:20.812Z",
+    "type": "FALLBACK",
+    "statusCode": 503,
+    "reason": "GROQ_API_KEY no configurada",
+    "pregunta": "¿Qué es programación?",
+    "materia": "Programación"
+  },
+  {
+    "timestamp": "2026-04-22T04:40:39.683Z",
+    "type": "ERROR",
+    "statusCode": 400,
+    "message": "{\"error\":{\"message\":\"The model `mixtral-8x7b-32768` has been decommissioned and is no longer supported. Please refer to https://console.groq.com/docs/deprecations for a recommendation on which model to use instead.\",\"type\":\"invalid_request_error\",\"code\":\"model_decommissioned\"}}\n",
+    "attempts": 1,
+    "pregunta": "hola",
+    "materia": 2,
+    "severity": "LOW"
+  },
+  {
+    "timestamp": "2026-04-22T04:44:59.748Z",
+    "type": "ERROR",
+    "statusCode": 404,
+    "message": "{\"error\":{\"message\":\"The model `llama-3.3-70b-versatile-20240912` does not exist or you do not have access to it.\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\"}}\n",
+    "attempts": 1,
+    "pregunta": "Qué es un algoritmo?",
+    "materia": 1,
+    "severity": "LOW"
+  },
+  {
+    "timestamp": "2026-04-22T04:45:58.366Z",
+    "type": "SUCCESS",
+    "pregunta": "hola",
+    "materia": 1,
+    "responseTime": 524,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-04-22T04:47:28.965Z",
+    "type": "SUCCESS",
+    "pregunta": "Qué es un árbol avl?",
+    "materia": 1,
+    "responseTime": 2374,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-04-27T18:11:07.921Z",
+    "type": "CACHE_HIT",
+    "pregunta": "Hola",
+    "materia": 1
+  },
+  {
+    "timestamp": "2026-04-27T18:40:47.107Z",
+    "type": "SUCCESS",
+    "pregunta": "Qué es un archivo json?",
+    "materia": 2,
+    "responseTime": 1943,
+    "statusCode": 200
+  }
+]

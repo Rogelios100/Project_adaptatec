@@ -6,6 +6,7 @@ import groqLogger from '../utils/groqLogger.js';
 import { getFallbackResponse, shouldUseFallback, getErrorMessage } from '../utils/fallbackResponses.js';
 
 const router = express.Router();
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 /**
  * Validación de configuración
@@ -58,7 +59,7 @@ async function callGroqAPI(messages, apiKey) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', // Modelo recomendado para educación
+        model: GROQ_MODEL,
         messages: messages,
         temperature: 0.7,
         max_tokens: 1024,

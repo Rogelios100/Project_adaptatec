@@ -30,10 +30,72 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // Inicializar base de datos
-initializeDatabase();
+(async () => {
+  try {
+    await initializeDatabase();
+    app.use(express.static(path.join(__dirname, 'adaptatec')));
 
-// Servir archivos estáticos de la aplicación
-app.use(express.static(path.join(__dirname, 'adaptatec')));
+    // Rutas de API
+    app.use('/api/auth', authRoutes);
+    app.use('/api/users', userRoutes);
+    app.use('/api/materias', materiasRoutes);
+    app.use('/api/gemini', groqRoutes);
+    app.use('/api/groq', groqRoutes);
+
+    // Ruta de verificación de salud
+    app.get('/api/health', (req, res) => {
+      res.json({ status: 'OK', timestamp: new Date().toISOString() });
+    });
+
+    // Ruta raíz
+    app.get('/', (req, res) => {
+      res.sendFile(path.join(__dirname, 'adaptatec', 'index.html'));
+    });
+
+    // Manejo de errores global
+    app.use((err, req, res, next) => {
+      console.error('Error:', err);
+      res.status(err.status || 500).json({
+        error: err.message || 'Error interno del servidor',
+        status: err.status || 500
+      });
+    });
+
+    // Iniciar servidor
+    const fallbackPort = PORT + 1;
+    const server = app.listen(PORT, HOST, () => {
+      console.log(`
+╔════════════════════════════════════════╗
+║       ADAPTATEC SERVER INICIADO        ║
+╚════════════════════════════════════════╝
+  
+  🚀 Servidor: http://${HOST}:${PORT}
+  🌐 Para otros dispositivos: http://<tu-ip>:${PORT}
+  
+  Puedes encontrar tu IP local con: ipconfig (Windows)
+  o ifconfig (Mac/Linux)
+  
+  Acceso local: http://localhost:${PORT}
+  Acceso remoto: http://<IP-LOCAL>:${PORT}
+  `);
+    });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.warn(`Puerto ${PORT} en uso. Intentando puerto ${fallbackPort}...`);
+        app.listen(fallbackPort, HOST, () => {
+          console.log(`Servidor iniciado en ${HOST}:${fallbackPort} después de que el puerto ${PORT} estuviera ocupado.`);
+        });
+      } else {
+        console.error('Error al iniciar el servidor:', err);
+        process.exit(1);
+      }
+    });
+  } catch (err) {
+    console.error('No se pudo iniciar el servidor debido a un error de base de datos:', err);
+    process.exit(1);
+  }
+})();
 
 // Rutas de API
 app.use('/api/auth', authRoutes);

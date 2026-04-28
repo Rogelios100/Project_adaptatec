@@ -47,6 +47,10 @@ class GroqLogger {
         this.stats = { ...this.stats, ...parsed };
       }
 
+      if (!fs.existsSync(ERROR_LOG_FILE)) {
+        fs.writeFileSync(ERROR_LOG_FILE, JSON.stringify([], null, 2));
+      }
+
       console.log('✅ Sistema de logging de Groq inicializado');
     } catch (error) {
       console.error('❌ Error al inicializar logging:', error.message);
@@ -186,14 +190,22 @@ class GroqLogger {
       }
 
       const data = fs.readFileSync(ERROR_LOG_FILE, 'utf-8');
-      const lines = data.split('\n').filter(line => line.trim());
-      const errors = lines.map(line => {
-        try {
-          return JSON.parse(line);
-        } catch {
-          return null;
-        }
-      }).filter(e => e !== null && e.type === 'ERROR');
+      let entries = [];
+      try {
+        entries = JSON.parse(data);
+      } catch {
+        const lines = data.split('\n').filter(line => line.trim());
+        entries = lines.map(line => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return null;
+          }
+        }).filter(Boolean);
+      }
+      const errors = Array.isArray(entries)
+        ? entries.filter(entry => entry && entry.type === 'ERROR')
+        : [];
 
       const last24Hours = errors.filter(e => {
         const timestamp = new Date(e.timestamp);
@@ -232,20 +244,33 @@ class GroqLogger {
       if (!fs.existsSync(ERROR_LOG_FILE)) return;
 
       const data = fs.readFileSync(ERROR_LOG_FILE, 'utf-8');
-      const lines = data.split('\n').filter(line => line.trim());
+      let entries = [];
+      try {
+        entries = JSON.parse(data);
+      } catch {
+        const lines = data.split('\n').filter(line => line.trim());
+        entries = lines.map(line => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return null;
+          }
+        }).filter(Boolean);
+      }
       const cutoffTime = Date.now() - (maxDays * 24 * 60 * 60 * 1000);
 
-      const recentLines = lines.filter(line => {
-        try {
-          const entry = JSON.parse(line);
-          return new Date(entry.timestamp).getTime() > cutoffTime;
-        } catch {
-          return true;
-        }
-      });
+      const recentEntries = Array.isArray(entries)
+        ? entries.filter(entry => {
+            try {
+              return new Date(entry.timestamp).getTime() > cutoffTime;
+            } catch {
+              return true;
+            }
+          })
+        : [];
 
-      fs.writeFileSync(ERROR_LOG_FILE, recentLines.join('\n') + '\n');
-      console.log(`🧹 Logs limpiados: ${lines.length - recentLines.length} entradas removidas`);
+      fs.writeFileSync(ERROR_LOG_FILE, JSON.stringify(recentEntries, null, 2));
+      console.log(`🧹 Logs limpiados: ${entries.length - recentEntries.length} entradas removidas`);
     } catch (error) {
       console.error('Error al limpiar logs:', error.message);
     }
@@ -269,18 +294,33 @@ class GroqLogger {
    */
   _appendToLog(filePath, entry) {
     try {
-      fs.appendFileSync(filePath, JSON.stringify(entry) + '\n');
+      let entries = [];
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        try {
+          const parsed = JSON.parse(content);
+          entries = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          const lines = content.split('\n').filter(line => line.trim());
+          entries = lines.map(line => {
+            try {
+              return JSON.parse(line);
+            } catch {
+              return null;
+            }
+          }).filter(Boolean);
+        }
+      }
 
-      // Verificar tamaño del archivo
-      const stats = fs.statSync(filePath);
-      const lines = fs.readFileSync(filePath, 'utf-8').split('\n').length;
+      entries.push(entry);
+      const truncated = entries.length > MAX_LOG_SIZE
+        ? entries.slice(-MAX_LOG_SIZE)
+        : entries;
 
-      if (lines > MAX_LOG_SIZE) {
-        const data = fs.readFileSync(filePath, 'utf-8');
-        const lines = data.split('\n').filter(line => line.trim());
-        const retained = lines.slice(-MAX_LOG_SIZE);
-        fs.writeFileSync(filePath, retained.join('\n') + '\n');
-        console.log(`📋 Log truncado: ${lines.length - MAX_LOG_SIZE} líneas removidas`);
+      fs.writeFileSync(filePath, JSON.stringify(truncated, null, 2));
+
+      if (entries.length > MAX_LOG_SIZE) {
+        console.log(`📋 Log truncado: ${entries.length - MAX_LOG_SIZE} entradas removidas`);
       }
     } catch (error) {
       console.error('Error al escribir log:', error.message);

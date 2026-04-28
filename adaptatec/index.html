@@ -31,9 +31,9 @@
 
             <form id="loginForm" class="auth-form active" data-form="login">
                 <div class="form-group">
-                    <label for="loginUsername">Usuario:</label>
-                    <input type="text" id="loginUsername" placeholder="Ej: ALU001, ADMIN001" required>
-                    <small class="helper-text">Alumno: ALU### | Admin: ADMIN###</small>
+                    <label for="loginUsername">Usuario o Matrícula:</label>
+                    <input type="text" id="loginUsername" placeholder="Ej: ALU001, 2024-IS-0001" required>
+                    <small class="helper-text">Inicia sesión con tu usuario o tu matrícula.</small>
                 </div>
                 <div class="form-group">
                     <label for="loginPassword">Contraseña:</label>
@@ -44,9 +44,14 @@
 
             <form id="registerForm" class="auth-form" data-form="register">
                 <div class="form-group">
+                    <label for="regMatricula">Matrícula:</label>
+                    <input type="text" id="regMatricula" placeholder="Ej: 2024-IS-0001" required>
+                    <small class="helper-text">Ingresa tu matrícula institucional.</small>
+                </div>
+                <div class="form-group">
                     <label for="regUsername">Usuario:</label>
                     <input type="text" id="regUsername" placeholder="Ej: ALU002" required>
-                    <small class="helper-text">Comienza con ALU, DOC o ADMIN</small>
+                    <small class="helper-text">Comienza con ALU</small>
                 </div>
                 <div class="form-group">
                     <label for="regEmail">Email:</label>
@@ -64,7 +69,7 @@
             </form>
 
             <div class="auth-footer">
-                <p class="demo-info">🎮 Demo: Usa ALU001 o ADMIN001 con contraseña: "123"</p>
+                <p class="demo-info">🔐 Usa tu usuario o matrícula y contraseña para iniciar sesión.</p>
             </div>
         </div>
     </div>
@@ -88,8 +93,8 @@
         <div class="app-wrapper">
             <aside class="sidebar">
                 <nav class="sidebar-nav">
-                    <button class="nav-button active" data-view="General">
-                        📊 General
+                    <button class="nav-button active" data-view="dashboard">
+                        📊 Perfil
                     </button>
                     <button class="nav-button" data-view="materias">
                         📚 Materias
@@ -110,7 +115,23 @@
                 <!-- DASHBOARD VIEW (Estilo segunda imagen) -->
                 <section id="dashboardView" class="view active">
                     <div class="view-header">
-                        <h2>Panel de Control</h2>
+                        <h2>Perfil</h2>
+                        <p class="view-description">Esta es tu vista de perfil como estudiante. Aquí revisas tu información personal, monitoreas tu progreso en las materias, ves actividades recientes y encuentras recomendaciones para avanzar de forma organizada.</p>
+                    </div>
+
+                    <div class="dashboard-guidance">
+                        <div class="guidance-card">
+                            <h4>👤 Perfil</h4>
+                            <p>Tu perfil te muestra tu nivel, puntos y datos importantes. Revisa que toda tu información esté actualizada.</p>
+                        </div>
+                        <div class="guidance-card">
+                            <h4>📚 Progreso</h4>
+                            <p>En esta sección ves qué materias estás cursando. Usa el menú “Materias” para hacer preguntas específicas de cada curso.</p>
+                        </div>
+                        <div class="guidance-card">
+                            <h4>🕒 Actividad reciente</h4>
+                            <p>Aquí se registran tus últimas acciones. Úsalo como recordatorio de lo que ya completaste y lo que sigue.</p>
+                        </div>
                     </div>
 
                     <!-- Perfil del Alumno - Estilo segunda imagen -->
@@ -231,6 +252,10 @@
                         <div class="rewards-section">
                             <h3>Recompensas Disponibles</h3>
                             <div class="rewards-grid" id="availableRewards"></div>
+                        </div>
+                        <div class="rewards-section">
+                            <h3>Objetivos Actuales</h3>
+                            <div class="rewards-grid" id="objectiveList"></div>
                         </div>
                         <div class="rewards-section">
                             <h3>Mi Información</h3>

@@ -1,180 +1,268 @@
-import sqlite3 from 'sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import mysql from 'mysql2/promise';
 import bcrypt from 'bcryptjs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const DB_HOST = process.env.DB_HOST || 'localhost';
+const DB_PORT = Number(process.env.DB_PORT || 3306);
+const DB_USER = process.env.DB_USER || 'root';
+const DB_PASSWORD = process.env.DB_PASSWORD || '';
+const DB_DATABASE = process.env.DB_DATABASE || 'adaptatec';
 
-const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '..', 'adaptatec.db');
+let pool = null;
 
-let db = null;
-
-export function initializeDatabase() {
-  db = new sqlite3.Database(DB_PATH, (err) => {
-    if (err) {
-      console.error('Error al conectar a la base de datos:', err);
-      return;
-    }
-    console.log('✅ Conectado a la base de datos SQLite');
-    createTables();
-  });
-}
-
-function createTables() {
-  db.serialize(() => {
-    // Tabla de usuarios
-    db.run(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        name TEXT,
-        role TEXT DEFAULT 'alumno',
-        nivel INTEGER DEFAULT 1,
-        puntos INTEGER DEFAULT 0,
-        logros INTEGER DEFAULT 0,
-        totalLogros INTEGER DEFAULT 24,
-        horas INTEGER DEFAULT 0,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Tabla de materias
-    db.run(`
-      CREATE TABLE IF NOT EXISTS materias (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre TEXT NOT NULL,
-        descripcion TEXT,
-        icon TEXT,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Tabla de progreso del usuario en materias
-    db.run(`
-      CREATE TABLE IF NOT EXISTS user_progress (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        userId INTEGER NOT NULL,
-        materiaId INTEGER NOT NULL,
-        progress INTEGER DEFAULT 0,
-        modulosCompletados INTEGER DEFAULT 0,
-        totalModulos INTEGER DEFAULT 12,
-        horasEstudio INTEGER DEFAULT 0,
-        lastAccessed DATETIME,
-        FOREIGN KEY (userId) REFERENCES users(id),
-        FOREIGN KEY (materiaId) REFERENCES materias(id),
-        UNIQUE(userId, materiaId)
-      )
-    `);
-
-    // Tabla de actividades recientes
-    db.run(`
-      CREATE TABLE IF NOT EXISTS activities (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        userId INTEGER NOT NULL,
-        descripcion TEXT NOT NULL,
-        tipo TEXT,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id)
-      )
-    `);
-
-    // Insertar datos de ejemplo
-    insertDefaultData();
-  });
-}
-
-function insertDefaultData() {
-  db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
-    if (err || row.count > 0) return;
-
-    const hashedPassword = bcrypt.hashSync('123', 10);
-
-    // Usuarios de ejemplo
-    db.run(`
-      INSERT INTO users (username, password, email, name, role, nivel, puntos, logros, horas)
-      VALUES 
-        (?, ?, ?, ?, ?, ?, ?, ?, ?),
-        (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      'ALU001', hashedPassword, 'juan.perez@universidad.edu', 'Juan David Pérez', 'alumno', 12, 87, 8, 23,
-      'ADMIN001', hashedPassword, 'admin@adaptatec.com', 'Admin Global', 'admin', 1, 0, 0, 0
-    ]);
-
-    // Materias
-    db.run(`
-      INSERT INTO materias (nombre, descripcion, icon)
-      VALUES 
-        (?, ?, ?),
-        (?, ?, ?),
-        (?, ?, ?),
-        (?, ?, ?),
-        (?, ?, ?),
-        (?, ?, ?)
-    `, [
-      'Algoritmos y Estructuras de Datos', 'Fundamentos de programación', '📘',
-      'Desarrollo Web Avanzado', 'HTML, CSS, JavaScript', '🌐',
-      'Base de Datos', 'SQL y modelado', '🗄️',
-      'Inteligencia Artificial', 'Machine Learning y redes neuronales', '🤖',
-      'Arquitectura de Software', 'Patrones y diseño', '🏗️',
-      'Seguridad Informática', 'Criptografía y protección', '🔐'
-    ]);
-
-    // Progreso de ejemplo para ALU001
-    db.run(`
-      INSERT INTO user_progress (userId, materiaId, progress, modulosCompletados, totalModulos, horasEstudio)
-      VALUES 
-        (1, 1, 75, 9, 12, 24),
-        (1, 2, 60, 9, 15, 30),
-        (1, 3, 85, 8, 10, 20),
-        (1, 4, 40, 5, 14, 28),
-        (1, 5, 55, 6, 11, 22),
-        (1, 6, 30, 4, 13, 26)
-    `);
-
-    console.log('✅ Datos de ejemplo insertados');
-  });
-}
-
-export function getDatabase() {
-  return db;
-}
-
-export function run(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
-      if (err) {
-        reject(err);
-      } else {
-        resolve({ id: this.lastID, changes: this.changes });
-      }
+export async function initializeDatabase() {
+  try {
+    // Conectar al servidor MySQL y crear la base de datos si no existe
+    const connection = await mysql.createConnection({
+      host: DB_HOST,
+      port: DB_PORT,
+      user: DB_USER,
+      password: DB_PASSWORD
     });
-  });
+
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${DB_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    await connection.end();
+
+    pool = mysql.createPool({
+      host: DB_HOST,
+      port: DB_PORT,
+      user: DB_USER,
+      password: DB_PASSWORD,
+      database: DB_DATABASE,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      dateStrings: true
+    });
+
+    await createTables();
+    console.log('✅ Conectado a MySQL en', DB_DATABASE);
+  } catch (err) {
+    console.error('Error al conectar a MySQL:', err);
+    throw err;
+  }
 }
 
-export function get(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(row);
-      }
-    });
-  });
+async function createTables() {
+  await run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      matricula VARCHAR(100) UNIQUE NOT NULL,
+      username VARCHAR(100) UNIQUE NOT NULL,
+      password VARCHAR(255) NOT NULL,
+      email VARCHAR(150) UNIQUE NOT NULL,
+      name VARCHAR(150) NOT NULL,
+      role VARCHAR(50) NOT NULL DEFAULT 'alumno',
+      nivel INT DEFAULT 1,
+      puntos INT DEFAULT 0,
+      logros INT DEFAULT 0,
+      totalLogros INT DEFAULT 24,
+      horas INT DEFAULT 0,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS materias (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) UNIQUE NOT NULL,
+      descripcion TEXT,
+      icon VARCHAR(50),
+      categoria VARCHAR(100),
+      creditos INT DEFAULT 3,
+      nivel INT DEFAULT 1,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS materia_docente (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      materiaId INT NOT NULL,
+      docenteId INT NOT NULL,
+      assignedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_materia_docente (materiaId, docenteId),
+      FOREIGN KEY (materiaId) REFERENCES materias(id) ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (docenteId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS enrollments (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      userId INT NOT NULL,
+      materiaId INT NOT NULL,
+      enrolledAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      status VARCHAR(50) DEFAULT 'inscrito',
+      UNIQUE KEY uq_enrollment (userId, materiaId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (materiaId) REFERENCES materias(id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS user_progress (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      userId INT NOT NULL,
+      materiaId INT NOT NULL,
+      progress INT DEFAULT 0,
+      modulosCompletados INT DEFAULT 0,
+      totalModulos INT DEFAULT 12,
+      horasEstudio INT DEFAULT 0,
+      calificacion DECIMAL(4,2) DEFAULT 0,
+      comentarios TEXT,
+      lastAccessed DATETIME,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_user_progress (userId, materiaId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (materiaId) REFERENCES materias(id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS progress_history (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      userProgressId INT NOT NULL,
+      recordedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      progress INT DEFAULT 0,
+      modulosCompletados INT DEFAULT 0,
+      horasEstudio INT DEFAULT 0,
+      calificacion DECIMAL(4,2) DEFAULT 0,
+      nota TEXT,
+      FOREIGN KEY (userProgressId) REFERENCES user_progress(id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS activities (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      userId INT NOT NULL,
+      descripcion TEXT NOT NULL,
+      tipo VARCHAR(50) DEFAULT 'general',
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS objectives (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      clave VARCHAR(100) UNIQUE NOT NULL,
+      nombre VARCHAR(150) NOT NULL,
+      descripcion TEXT,
+      tipo VARCHAR(50) DEFAULT 'progreso',
+      objetivo INT DEFAULT 0,
+      unidad VARCHAR(50) DEFAULT 'percent',
+      puntos INT DEFAULT 0,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS user_objectives (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      userId INT NOT NULL,
+      objectiveId INT NOT NULL,
+      estado VARCHAR(50) DEFAULT 'pendiente',
+      progreso INT DEFAULT 0,
+      desbloqueadoAt DATETIME,
+      UNIQUE KEY uq_user_objective (userId, objectiveId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (objectiveId) REFERENCES objectives(id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS rewards (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL,
+      descripcion TEXT,
+      requiredPoints INT DEFAULT 0,
+      requiredProgress INT DEFAULT 0,
+      requiredHours INT DEFAULT 0,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB;
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS user_rewards (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      userId INT NOT NULL,
+      rewardId INT NOT NULL,
+      unlockedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_user_reward (userId, rewardId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (rewardId) REFERENCES rewards(id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await insertDefaultObjectivesAndRewards();
+  await insertAdminUser();
 }
 
-export function all(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(rows);
-      }
-    });
-  });
+async function insertDefaultObjectivesAndRewards() {
+  await run(
+    `INSERT IGNORE INTO objectives (clave, nombre, descripcion, tipo, objetivo, unidad, puntos) VALUES
+      (?, ?, ?, ?, ?, ?, ?),
+      (?, ?, ?, ?, ?, ?, ?),
+      (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      'primer_curso', 'Completa tu primera materia', 'Alcanza 100% en al menos una materia.', 'materia', 100, 'percent', 10,
+      'diez_horas', 'Acumula 10 horas de estudio', 'Registra al menos 10 horas de estudio en tus materias.', 'horas', 10, 'hours', 10,
+      'avance_promedio', 'Promedio de progreso 70%', 'Mantén un promedio de progreso de al menos 70% en tus materias.', 'promedio', 70, 'percent', 10
+    ]
+  );
+
+  await run(
+    `INSERT IGNORE INTO rewards (nombre, descripcion, requiredPoints, requiredProgress, requiredHours) VALUES
+      (?, ?, ?, ?, ?),
+      (?, ?, ?, ?, ?),
+      (?, ?, ?, ?, ?),
+      (?, ?, ?, ?, ?)`,
+    [
+      'Primer Paso', 'Completa tu primera materia o registra 10 horas de estudio.', 0, 100, 10,
+      'Racha de Estudio', 'Mantén un progreso constante en varias materias.', 20, 75, 0,
+      'Experto en Algoritmos', 'Alcanza 85% o más en la materia Algoritmos.', 50, 85, 0,
+      'Maestro del DOM', 'Alcanza 80% o más en Desarrollo Web.', 65, 80, 0
+    ]
+  );
+}
+
+async function insertAdminUser() {
+  const existingAdmin = await get('SELECT id FROM users WHERE role = ? LIMIT 1', ['admin']);
+  if (existingAdmin) return;
+
+  const hashedPassword = bcrypt.hashSync('123', 10);
+  await run(
+    'INSERT INTO users (matricula, username, password, email, name, role, nivel, puntos, logros, horas) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    ['ADMIN-0001', 'ADMIN001', hashedPassword, 'admin@adaptatec.com', 'Admin Global', 'admin', 1, 0, 0, 0]
+  );
+}
+
+export function getPool() {
+  return pool;
+}
+
+export async function run(sql, params = []) {
+  if (!pool) throw new Error('Pool de base de datos no inicializado');
+  const [result] = await pool.execute(sql, params);
+  return {
+    id: result.insertId || null,
+    changes: result.affectedRows || 0
+  };
+}
+
+export async function get(sql, params = []) {
+  if (!pool) throw new Error('Pool de base de datos no inicializado');
+  const [rows] = await pool.execute(sql, params);
+  return rows[0] || null;
+}
+
+export async function all(sql, params = []) {
+  if (!pool) throw new Error('Pool de base de datos no inicializado');
+  const [rows] = await pool.execute(sql, params);
+  return rows;
 }

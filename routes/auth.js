@@ -9,10 +9,10 @@ const router = express.Router();
 // REGISTRARSE
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, name, role } = req.body;
+    const { username, matricula, email, password, name, role } = req.body;
 
     // Validaciones
-    if (!username || !email || !password) {
+    if (!username || !matricula || !email || !password) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
@@ -21,9 +21,12 @@ router.post('/register', async (req, res) => {
     }
 
     // Verificar si el usuario ya existe
-    const existingUser = await get('SELECT id FROM users WHERE username = ? OR email = ?', [username, email]);
+    const existingUser = await get(
+      'SELECT id FROM users WHERE username = ? OR email = ? OR matricula = ?',
+      [username, email, matricula]
+    );
     if (existingUser) {
-      return res.status(409).json({ error: 'El usuario o email ya existe' });
+      return res.status(409).json({ error: 'El usuario, email o matrícula ya existe' });
     }
 
     // Hashear contraseña
@@ -31,13 +34,13 @@ router.post('/register', async (req, res) => {
 
     // Crear usuario
     const result = await run(
-      'INSERT INTO users (username, password, email, name, role) VALUES (?, ?, ?, ?, ?)',
-      [username, hashedPassword, email, name || username, role || 'alumno']
+      'INSERT INTO users (username, matricula, password, email, name, role) VALUES (?, ?, ?, ?, ?, ?)',
+      [username, matricula, hashedPassword, email, name || username, role || 'alumno']
     );
 
     // Generar token
     const token = jwt.sign(
-      { id: result.id, username, role: role || 'alumno' },
+      { id: result.id, username, matricula, role: role || 'alumno' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -45,7 +48,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       message: 'Usuario registrado exitosamente',
       token,
-      user: { id: result.id, username, email, name, role: role || 'alumno' }
+      user: { id: result.id, username, matricula, email, name, role: role || 'alumno' }
     });
   } catch (error) {
     console.error('Error en registro:', error);
@@ -62,8 +65,11 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
     }
 
-    // Buscar usuario
-    const user = await get('SELECT * FROM users WHERE username = ?', [username]);
+    // Buscar usuario por username o matrícula
+    const user = await get(
+      'SELECT * FROM users WHERE username = ? OR matricula = ?',
+      [username, username]
+    );
     if (!user) {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
