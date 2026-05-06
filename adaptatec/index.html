@@ -528,5 +528,39 @@
             <button id="chatSendBtn" class="btn btn-primary">Enviar</button>
         </div>
     </div>
+
+    <!-- MODAL PARA EXAMEN -->
+    <div id="examenModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content-box" style="max-width: 700px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header-box">
+                <h3 id="examenModalTitle">📝 Examen: <span id="examenModuloNombre"></span></h3>
+                <button id="closeExamenBtn" class="close-btn">&times;</button>
+            </div>
+            <div id="examenPreguntas"></div>
+            <div id="examenResultado" style="display:none;"></div>
+            <div class="examen-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="enviarExamenBtn" class="btn btn-primary">Calificar examen</button>
+                <button id="cancelarExamenBtn" class="btn btn-outline">Cancelar</button>
+            </div>
+            <div id="examenReintentar" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA EXAMEN -->
+    <div id="examenModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content-box" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header-box">
+                <h3 id="examenModalTitle">📝 Examen</h3>
+                <button id="closeExamenBtn" class="close-btn">&times;</button>
+            </div>
+            <div id="examenModuloNombre" style="margin-bottom: 15px; color: #64748b; font-size: 0.9rem;"></div>
+            <div id="examenPreguntas" style="margin-bottom: 20px;"></div>
+            <div id="examenResultado" style="display:none;"></div>
+            <div class="examen-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="enviarExamenBtn" class="btn btn-primary">✅ Calificar examen</button>
+                <button id="cancelarExamenBtn" class="btn btn-outline">Cancelar</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

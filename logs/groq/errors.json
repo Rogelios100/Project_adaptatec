@@ -76,5 +76,115 @@
     "materia": 2,
     "responseTime": 1943,
     "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-03T19:06:51.200Z",
+    "type": "FALLBACK",
+    "statusCode": 503,
+    "reason": "GROQ_API_KEY no configurada",
+    "pregunta": "HOLA, DAME INFO DE ARBOLES",
+    "materia": 1
+  },
+  {
+    "timestamp": "2026-05-03T19:12:51.896Z",
+    "type": "FALLBACK",
+    "statusCode": 503,
+    "reason": "GROQ_API_KEY no configurada",
+    "pregunta": "¿Que es un arbol AVL?",
+    "materia": 1
+  },
+  {
+    "timestamp": "2026-05-03T19:12:58.233Z",
+    "type": "FALLBACK",
+    "statusCode": 503,
+    "reason": "GROQ_API_KEY no configurada",
+    "pregunta": "hola",
+    "materia": 1
+  },
+  {
+    "timestamp": "2026-05-03T19:17:58.555Z",
+    "type": "CACHE_HIT",
+    "pregunta": "hola",
+    "materia": 1
+  },
+  {
+    "timestamp": "2026-05-03T19:18:08.074Z",
+    "type": "SUCCESS",
+    "pregunta": "Que es un arbol binario?",
+    "materia": 1,
+    "responseTime": 2335,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-03T19:24:58.876Z",
+    "type": "SUCCESS",
+    "pregunta": "Que es una pila y que es una cola",
+    "materia": 1,
+    "responseTime": 2643,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-03T19:25:13.162Z",
+    "type": "SUCCESS",
+    "pregunta": "Dame corta la info",
+    "materia": 1,
+    "responseTime": 1128,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-03T19:25:28.775Z",
+    "type": "SUCCESS",
+    "pregunta": "que es una pila y que es una cola, corto",
+    "materia": 1,
+    "responseTime": 1189,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-04T16:41:55.601Z",
+    "type": "SUCCESS",
+    "pregunta": "hola",
+    "materia": 4,
+    "responseTime": 664,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-04T16:42:13.443Z",
+    "type": "SUCCESS",
+    "pregunta": "dime que son las  redes neuronales",
+    "materia": 4,
+    "responseTime": 2821,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-04T16:56:47.466Z",
+    "type": "SUCCESS",
+    "pregunta": "donde comprar sobres de ascended heroes en ingles en mexico",
+    "materia": 3,
+    "responseTime": 815,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-04T16:58:15.429Z",
+    "type": "SUCCESS",
+    "pregunta": "como hago una concexion de una base de datos en postgres hacia una aplicacion movil desarrollada en ",
+    "materia": 3,
+    "responseTime": 1619,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-06T18:23:55.330Z",
+    "type": "SUCCESS",
+    "pregunta": "que es un join cartesiano?",
+    "materia": 3,
+    "responseTime": 2075,
+    "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-06T18:28:21.779Z",
+    "type": "SUCCESS",
+    "pregunta": "que es y que hace el operador all en bases de datos",
+    "materia": 3,
+    "responseTime": 1022,
+    "statusCode": 200
   }
 ]

@@ -12,92 +12,28 @@ import groqRoutes from './routes/groq.js';
 
 // Cargar variables de entorno
 dotenv.config();
+console.log('GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ Configurada' : '❌ No encontrada');
 
 // Configurar rutas para archivos estáticos
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || 3000, 10);
 const HOST = process.env.HOST || 'localhost';
 
 // Middleware
 app.use(cors({
-  origin: '*', // Permite conexiones desde cualquier dispositivo
+  origin: '*',
   credentials: true
 }));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-// Inicializar base de datos
-(async () => {
-  try {
-    await initializeDatabase();
-    app.use(express.static(path.join(__dirname, 'adaptatec')));
+// Servir archivos estáticos
+app.use(express.static(path.join(__dirname, 'adaptatec')));
 
-    // Rutas de API
-    app.use('/api/auth', authRoutes);
-    app.use('/api/users', userRoutes);
-    app.use('/api/materias', materiasRoutes);
-    app.use('/api/gemini', groqRoutes);
-    app.use('/api/groq', groqRoutes);
-
-    // Ruta de verificación de salud
-    app.get('/api/health', (req, res) => {
-      res.json({ status: 'OK', timestamp: new Date().toISOString() });
-    });
-
-    // Ruta raíz
-    app.get('/', (req, res) => {
-      res.sendFile(path.join(__dirname, 'adaptatec', 'index.html'));
-    });
-
-    // Manejo de errores global
-    app.use((err, req, res, next) => {
-      console.error('Error:', err);
-      res.status(err.status || 500).json({
-        error: err.message || 'Error interno del servidor',
-        status: err.status || 500
-      });
-    });
-
-    // Iniciar servidor
-    const fallbackPort = PORT + 1;
-    const server = app.listen(PORT, HOST, () => {
-      console.log(`
-╔════════════════════════════════════════╗
-║       ADAPTATEC SERVER INICIADO        ║
-╚════════════════════════════════════════╝
-  
-  🚀 Servidor: http://${HOST}:${PORT}
-  🌐 Para otros dispositivos: http://<tu-ip>:${PORT}
-  
-  Puedes encontrar tu IP local con: ipconfig (Windows)
-  o ifconfig (Mac/Linux)
-  
-  Acceso local: http://localhost:${PORT}
-  Acceso remoto: http://<IP-LOCAL>:${PORT}
-  `);
-    });
-
-    server.on('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        console.warn(`Puerto ${PORT} en uso. Intentando puerto ${fallbackPort}...`);
-        app.listen(fallbackPort, HOST, () => {
-          console.log(`Servidor iniciado en ${HOST}:${fallbackPort} después de que el puerto ${PORT} estuviera ocupado.`);
-        });
-      } else {
-        console.error('Error al iniciar el servidor:', err);
-        process.exit(1);
-      }
-    });
-  } catch (err) {
-    console.error('No se pudo iniciar el servidor debido a un error de base de datos:', err);
-    process.exit(1);
-  }
-})();
-
-// Rutas de API
+// Rutas de API (SOLO UNA VEZ)
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/materias', materiasRoutes);
@@ -123,9 +59,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Iniciar servidor
-app.listen(PORT, HOST, () => {
-  console.log(`
+// ========== INICIAR SERVIDOR (SOLO UNA VEZ) ==========
+async function startServer() {
+  try {
+    await initializeDatabase();
+    
+    const server = app.listen(PORT, HOST, () => {
+      console.log(`
 ╔════════════════════════════════════════╗
 ║       ADAPTATEC SERVER INICIADO        ║
 ╚════════════════════════════════════════╝
@@ -133,10 +73,30 @@ app.listen(PORT, HOST, () => {
   🚀 Servidor: http://${HOST}:${PORT}
   🌐 Para otros dispositivos: http://<tu-ip>:${PORT}
   
-  Puedes encontrar tu IP local con: ipconfig (Windows)
-  o ifconfig (Mac/Linux)
-  
   Acceso local: http://localhost:${PORT}
-  Acceso remoto: http://<IP-LOCAL>:${PORT}
   `);
-});
+    });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Puerto ${PORT} está en uso.`);
+        console.log(`💡 Soluciones:
+  1. Cierra otros programas que usen el puerto ${PORT}
+  2. Cambia el PORT en el archivo .env
+  3. Ejecuta: taskkill /f /im node.exe (como administrador)
+  4. Reinicia tu computadora
+        `);
+        process.exit(1);
+      } else {
+        console.error('❌ Error al iniciar el servidor:', err);
+        process.exit(1);
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ No se pudo iniciar el servidor:', err);
+    process.exit(1);
+  }
+}
+
+startServer();

@@ -1,3 +1,18 @@
+// ========== FORZAR CARGA DE .env ==========
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Cargar .env desde la raíz del proyecto
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+console.log('📁 [groq.js] .env cargado desde:', path.join(__dirname, '..', '.env'));
+console.log('🔑 [groq.js] GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ EXISTE' : '❌ NO EXISTE');
+
+// routes/groq.js
 import express from 'express';
 import { verifyToken } from '../middleware/auth.js';
 import retryHandler from '../utils/retryHandler.js';
@@ -5,14 +20,20 @@ import groqCache from '../utils/groqCache.js';
 import groqLogger from '../utils/groqLogger.js';
 import { getFallbackResponse, shouldUseFallback, getErrorMessage } from '../utils/fallbackResponses.js';
 
+console.log('=== DIAGNÓSTICO GROQ ===');
+console.log('process.env.GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ EXISTE' : '❌ NO EXISTE');
+console.log('Valor:', process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.substring(0, 20) + '...' : 'vacío');
+console.log('========================');
+
 const router = express.Router();
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 /**
  * Validación de configuración
  */
 function validateGroqConfig() {
-  const key = process.env.GROQ_API_KEY;
+  const key = GROQ_API_KEY;
   
   if (!key || key === 'tu_api_key_de_groq_aqui') {
     return {
@@ -45,7 +66,6 @@ Mantén las respuestas concisas pero informativas.`;
 
 /**
  * Llama a Groq API con manejo de errores
- * Groq es ultra-rápido y compatible con OpenAI
  */
 async function callGroqAPI(messages, apiKey) {
   const startTime = Date.now();
@@ -83,14 +103,12 @@ async function callGroqAPI(messages, apiKey) {
 }
 
 /**
- * Endpoint principal: POST /api/gemini
- * Con reintentos, caché y fallback automático
+ * Endpoint principal: POST /api/groq
  */
 router.post('/', verifyToken, async (req, res) => {
   const { pregunta, materia, contexto } = req.body;
   const startTime = Date.now();
 
-  // ========== VALIDACIONES INICIALES ==========
   const configCheck = validateGroqConfig();
   if (!configCheck.valid) {
     const fallbackResponse = getFallbackResponse(materia, { statusCode: 503 });
@@ -110,8 +128,6 @@ router.post('/', verifyToken, async (req, res) => {
     return res.status(400).json({ error: '❌ Pregunta no proporcionada' });
   }
 
-  // ========== VERIFICAR CACHÉ ==========
-  //console.log(typeof req.body.materia, req.body.materia);
   const cachedResponse = groqCache.get(pregunta, materia);
   if (cachedResponse) {
     groqLogger.logCacheHit(pregunta, materia);
@@ -122,25 +138,20 @@ router.post('/', verifyToken, async (req, res) => {
     });
   }
 
-  // ========== CONSTRUIR MENSAJES ==========
   const { system, userMessage } = buildMessages(pregunta, materia, contexto);
   const messages = [
     { role: 'system', content: system },
     { role: 'user', content: userMessage }
   ];
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = GROQ_API_KEY;
 
-  // ========== EJECUTAR CON REINTENTOS ==========
   try {
     const { respuesta, responseTime } = await retryHandler.execute(
       () => callGroqAPI(messages, apiKey),
       'Groq API Call'
     );
 
-    // Guardar en caché
     groqCache.set(pregunta, materia, respuesta);
-    
-    // Registrar éxito
     groqLogger.logSuccess(pregunta, materia, responseTime);
 
     return res.json({
@@ -153,10 +164,8 @@ router.post('/', verifyToken, async (req, res) => {
     const statusCode = error.statusCode || 500;
     const responseTime = Date.now() - startTime;
 
-    // ========== MANEJO DE ERRORES CON FALLBACK ==========
     groqLogger.logError(statusCode, error.message, error.attempts || 1, pregunta, materia);
 
-    // Usar fallback si es apropiado
     if (shouldUseFallback(statusCode)) {
       const fallbackResponse = getFallbackResponse(materia, { statusCode });
       groqLogger.logFallback(statusCode, pregunta, materia, `Error ${statusCode}`);
@@ -171,7 +180,6 @@ router.post('/', verifyToken, async (req, res) => {
       });
     }
 
-    // Error no recuperable
     return res.status(statusCode).json({
       error: getErrorMessage(statusCode, error),
       statusCode,
@@ -181,9 +189,167 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
+// ========== ENDPOINT PARA GENERAR EXAMEN ==========
+router.post('/generate-quiz', verifyToken, async (req, res) => {
+    try {
+        const { materiaId, moduloIndex, moduloNombre, materiaNombre } = req.body;
+        
+        if (!moduloNombre || !materiaNombre) {
+            return res.status(400).json({ error: 'Faltan datos del módulo o materia' });
+        }
+        
+        console.log(`📝 Generando examen para: ${materiaNombre} - ${moduloNombre}`);
+        
+        // Si no hay API Key, usar fallback
+        if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY === 'tu_api_key_de_groq_aqui') {
+            console.log('⚠️ GROQ_API_KEY no configurada, usando fallback');
+            const fallbackQuiz = generarQuizFallback(moduloNombre, materiaNombre);
+            return res.json(fallbackQuiz);
+        }
+        
+        // Prompt mejorado para forzar JSON puro
+        const prompt = `Eres un asistente que SOLO responde con JSON válido, sin texto adicional.
+
+Genera un examen de 5 preguntas de opción múltiple sobre "${moduloNombre}" (Materia: ${materiaNombre}).
+
+RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON, sin explicaciones, sin saludos, sin nada más:
+
+{
+  "preguntas": [
+    {
+      "texto": "pregunta aquí",
+      "opciones": ["opcion1", "opcion2", "opcion3", "opcion4"],
+      "correcta": 0,
+      "explicacion": "explicación breve"
+    }
+  ]
+}`;
+
+        console.log('🚀 Enviando solicitud a Groq...');
+        
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: GROQ_MODEL,
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.3,  // Reducir temperatura para respuestas más consistentes
+                max_tokens: 2000
+            })
+        });
+        
+        console.log('📡 Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Error body:', errorText);
+            throw new Error(`Groq API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        let quizData;
+        
+        try {
+            const content = data.choices[0].message.content;
+            console.log('📄 Respuesta recibida, longitud:', content.length);
+            console.log('📄 Primeros 100 caracteres:', content.substring(0, 100));
+            
+            // Estrategia de limpieza más agresiva
+            let cleanContent = content;
+            
+            // 1. Eliminar bloques de código markdown
+            cleanContent = cleanContent.replace(/```json\n?/gi, '');
+            cleanContent = cleanContent.replace(/```\n?/gi, '');
+            
+            // 2. Buscar el primer { y el último }
+            const firstBrace = cleanContent.indexOf('{');
+            const lastBrace = cleanContent.lastIndexOf('}');
+            
+            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                cleanContent = cleanContent.substring(firstBrace, lastBrace + 1);
+            }
+            
+            console.log('📄 JSON extraído (primeros 100 chars):', cleanContent.substring(0, 100));
+            
+            quizData = JSON.parse(cleanContent);
+            
+        } catch (parseError) {
+            console.error('Error parsing JSON:', parseError.message);
+            console.error('Contenido completo que falló:', content);
+            throw new Error('Respuesta inválida de la API');
+        }
+        
+        // Validar que tenga 5 preguntas
+        if (!quizData.preguntas || quizData.preguntas.length !== 5) {
+            console.log(`⚠️ La API no generó 5 preguntas (tiene ${quizData.preguntas?.length || 0}), usando fallback`);
+            const fallbackQuiz = generarQuizFallback(moduloNombre, materiaNombre);
+            return res.json(fallbackQuiz);
+        }
+        
+        console.log(`✅ Examen generado con ${quizData.preguntas.length} preguntas usando IA`);
+        res.json(quizData);
+        
+    } catch (error) {
+        console.error('Error generando quiz:', error);
+        const fallbackQuiz = generarQuizFallback(req.body.moduloNombre || 'general', req.body.materiaNombre || 'general');
+        res.json(fallbackQuiz);
+    }
+});
+
+// Función para generar quiz de fallback (preguntas predefinidas)
+function generarQuizFallback(moduloNombre, materiaNombre) {
+    console.log(`📚 Usando fallback quiz para: ${moduloNombre}`);
+    
+    const preguntasPorMateria = {
+        algoritmos: [
+            { texto: "¿Qué significa LIFO en estructuras de datos?", opciones: ["First In First Out", "Last In First Out", "Last In Last Out", "First In Last Out"], correcta: 1, explicacion: "LIFO significa Last In, First Out, característico de las pilas." },
+            { texto: "¿Qué estructura de datos usa el principio LIFO?", opciones: ["Cola", "Pila", "Lista enlazada", "Árbol binario"], correcta: 1, explicacion: "La pila (stack) utiliza LIFO." },
+            { texto: "¿Cuál es la complejidad temporal de una búsqueda binaria en un arreglo ordenado?", opciones: ["O(1)", "O(n)", "O(log n)", "O(n²)"], correcta: 2, explicacion: "La búsqueda binaria tiene complejidad O(log n)." },
+            { texto: "¿Qué tipo de algoritmo es el ordenamiento burbuja?", opciones: ["Divide y vencerás", "Programación dinámica", "Algoritmo de intercambio", "Algoritmo greedy"], correcta: 2, explicacion: "Bubble sort es un algoritmo de ordenamiento por intercambio." },
+            { texto: "¿Cuál es la principal ventaja de una lista enlazada?", opciones: ["Acceso aleatorio rápido", "Menor uso de memoria", "Inserción y eliminación eficiente", "Búsqueda binaria"], correcta: 2, explicacion: "Las listas enlazadas permiten inserciones y eliminaciones O(1)." }
+        ],
+        web: [
+            { texto: "¿Qué significa HTML?", opciones: ["Hyper Text Markup Language", "High Tech Modern Language", "Hyper Transfer Markup Language", "Home Tool Markup Language"], correcta: 0, explicacion: "HTML son las siglas de HyperText Markup Language." },
+            { texto: "¿Qué etiqueta se usa para crear un enlace en HTML?", opciones: ["<link>", "<a>", "<href>", "<url>"], correcta: 1, explicacion: "La etiqueta <a> (anchor) se usa para crear enlaces." },
+            { texto: "¿Qué propiedad CSS se usa para cambiar el color de fondo?", opciones: ["color", "background-color", "bgcolor", "background"], correcta: 1, explicacion: "background-color es la propiedad correcta para el color de fondo." },
+            { texto: "¿Qué método HTTP se usa para obtener datos?", opciones: ["POST", "PUT", "GET", "DELETE"], correcta: 2, explicacion: "GET se usa para solicitar datos del servidor." },
+            { texto: "¿Qué framework de JavaScript es desarrollado por Meta?", opciones: ["Angular", "Vue", "React", "Svelte"], correcta: 2, explicacion: "React fue creado y es mantenido por Meta." }
+        ],
+        default: [
+            { texto: `¿Cuál es un concepto fundamental de "${moduloNombre}" en ${materiaNombre}?`, opciones: ["Conceptualización básica", "Aplicación práctica", "Análisis de casos", "Síntesis de información"], correcta: 0, explicacion: "La conceptualización básica es fundamental para entender cualquier tema." },
+            { texto: "¿Cuál es la mejor práctica para aprender este tema?", opciones: ["Practicar con ejercicios", "Solo leer teoría", "Memorizar conceptos", "Ver videos sin práctica"], correcta: 0, explicacion: "La práctica con ejercicios es esencial para el aprendizaje efectivo." },
+            { texto: "¿Qué caracteriza a un buen entendimiento de este tema?", opciones: ["Aplicación a casos reales", "Memorización de definiciones", "Saber la historia", "Conocer autores"], correcta: 0, explicacion: "La aplicación práctica demuestra comprensión real del tema." },
+            { texto: "¿Qué recurso es más útil para estudiar?", opciones: ["Documentación oficial", "Videos de YouTube", "Redes sociales", "Foros de discusión"], correcta: 0, explicacion: "La documentación oficial suele ser la fuente más confiable." },
+            { texto: "¿Qué habilidad desarrolla principalmente este módulo?", opciones: ["Pensamiento analítico", "Memoria", "Creatividad artística", "Habilidades físicas"], correcta: 0, explicacion: "Los módulos técnicos desarrollan principalmente el pensamiento analítico." }
+        ]
+    };
+    
+    let tipo = 'default';
+    const materiaLower = materiaNombre.toLowerCase();
+    if (materiaLower.includes('algoritmo') || materiaLower.includes('estructura')) tipo = 'algoritmos';
+    else if (materiaLower.includes('web') || materiaLower.includes('desarrollo') || materiaLower.includes('html')) tipo = 'web';
+    
+    const preguntasBase = preguntasPorMateria[tipo];
+    
+    const preguntas = [];
+    for (let i = 0; i < 5; i++) {
+        if (preguntasBase[i]) {
+            preguntas.push({ ...preguntasBase[i] });
+        } else {
+            const base = { ...preguntasBase[0] };
+            base.texto = `${base.texto} (Parte ${i + 1})`;
+            preguntas.push(base);
+        }
+    }
+    
+    return { preguntas };
+}
+
 /**
- * Endpoint: GET /api/gemini/stats
- * Obtiene estadísticas del sistema
+ * Endpoint: GET /api/groq/stats
  */
 router.get('/stats', verifyToken, (req, res) => {
   const stats = groqLogger.getStats();
@@ -197,8 +363,7 @@ router.get('/stats', verifyToken, (req, res) => {
 });
 
 /**
- * Endpoint: GET /api/gemini/health
- * Verifica salud del sistema
+ * Endpoint: GET /api/groq/health
  */
 router.get('/health', (req, res) => {
   const stats = groqLogger.getStats();
@@ -218,16 +383,13 @@ router.get('/health', (req, res) => {
   res.json(health);
 });
 
-/**
- * Limpiar y mantener sistemas
- */
+// Limpieza periódica
 setInterval(() => {
   groqLogger.saveStats();
   groqCache.cleanup();
   groqLogger.cleanupOldLogs(30);
-}, 60 * 60 * 1000); // Cada hora
+}, 60 * 60 * 1000);
 
-// Limpiar al iniciar
 groqCache.cleanup();
 console.log('✅ Sistema de Groq con respaldo profesional inicializado');
 

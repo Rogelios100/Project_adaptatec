@@ -134,26 +134,41 @@ El servicio de IA debería estar disponible pronto. ¡Gracias por tu paciencia! 
 /**
  * Obtiene respuesta fallback basada en la materia
  */
+/**
+ * Obtiene respuesta fallback basada en la materia
+ */
 function getFallbackResponse(materia, errorInfo = null) {
   // Buscar coincidencia parcial con el nombre de la materia
   let response = fallbackResponses.default;
 
+  // ✅ CORREGIDO: asegurar que materia sea string y manejar objetos
+  let materiaStr = '';
   if (materia) {
-    const meteriaLower = materia.toLowerCase();
-    
-    if (meteriaLower.includes('algoritmo') || meteriaLower.includes('estructura')) {
-      response = fallbackResponses.algoritmos;
-    } else if (meteriaLower.includes('web') || meteriaLower.includes('desarrollo') || meteriaLower.includes('javascript')) {
-      response = fallbackResponses.desarrollo;
-    } else if (meteriaLower.includes('base') || meteriaLower.includes('dato') || meteriaLower.includes('sql')) {
-      response = fallbackResponses.basedatos;
-    } else if (meteriaLower.includes('inteligencia') || meteriaLower.includes('ia') || meteriaLower.includes('machine')) {
-      response = fallbackResponses.ia;
-    } else if (meteriaLower.includes('arquitectura')) {
-      response = fallbackResponses.arquitectura;
-    } else if (meteriaLower.includes('seguridad') || meteriaLower.includes('criptografía')) {
-      response = fallbackResponses.seguridad;
+    if (typeof materia === 'string') {
+      materiaStr = materia;
+    } else if (typeof materia === 'object' && materia.nombre) {
+      materiaStr = materia.nombre;
+    } else if (typeof materia === 'object' && materia.name) {
+      materiaStr = materia.name;
+    } else {
+      materiaStr = String(materia);
     }
+  }
+  
+  const materiaLower = materiaStr.toLowerCase();  // ✅ CORREGIDO: variable bien escrita
+  
+  if (materiaLower.includes('algoritmo') || materiaLower.includes('estructura')) {
+    response = fallbackResponses.algoritmos;
+  } else if (materiaLower.includes('web') || materiaLower.includes('desarrollo') || materiaLower.includes('javascript')) {
+    response = fallbackResponses.desarrollo;
+  } else if (materiaLower.includes('base') || materiaLower.includes('dato') || materiaLower.includes('sql')) {
+    response = fallbackResponses.basedatos;
+  } else if (materiaLower.includes('inteligencia') || materiaLower.includes('ia') || materiaLower.includes('machine')) {
+    response = fallbackResponses.ia;
+  } else if (materiaLower.includes('arquitectura')) {
+    response = fallbackResponses.arquitectura;
+  } else if (materiaLower.includes('seguridad') || materiaLower.includes('criptografía')) {
+    response = fallbackResponses.seguridad;
   }
 
   // Agregar información del error si está disponible
@@ -206,3 +221,40 @@ export {
   shouldUseFallback,
   getErrorMessage
 };
+
+
+function generarFallbackQuiz(moduloNombre, materiaNombre) {
+    // Preguntas genéricas basadas en palabras clave
+    const preguntasBase = [
+        {
+            texto: `¿Cuál es un concepto fundamental de "${moduloNombre}" en ${materiaNombre}?`,
+            opciones: [
+                "Conceptualización básica",
+                "Aplicación práctica", 
+                "Análisis de casos",
+                "Síntesis de información"
+            ],
+            correcta: 0,
+            explicacion: "La conceptualización básica es fundamental para entender cualquier tema."
+        },
+        {
+            texto: "¿Cuál es la mejor práctica para aprender este tema?",
+            opciones: [
+                "Practicar con ejercicios",
+                "Solo leer teoría",
+                "Memorizar conceptos",
+                "Ver videos sin práctica"
+            ],
+            correcta: 0,
+            explicacion: "La práctica con ejercicios es esencial para el aprendizaje efectivo."
+        }
+        // ... más preguntas de fallback
+    ];
+    
+    // Completar hasta 5 preguntas
+    while (preguntasBase.length < 5) {
+        preguntasBase.push({ ...preguntasBase[0] });
+    }
+    
+    return { preguntas: preguntasBase.slice(0, 5) };
+}
