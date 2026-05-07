@@ -240,39 +240,26 @@
 
 
                 <!-- RECOMPENSAS VIEW -->
-                <section id="recompensasView" class="view">
+                   <section id="recompensasView" class="view">
                     <div class="view-header">
-                        <h2>Sistema de Recompensas</h2>
+                        <h2>🎁 Tienda de Recompensas</h2>
+                        <p>Canjea tus tokens por beneficios académicos</p>
                     </div>
-                    <div class="rewards-container">
-                        <div class="rewards-section">
-                            <h3>Mis Recompensas Desbloqueadas</h3>
-                            <div class="rewards-grid" id="unlockedRewards"></div>
-                        </div>
-                        <div class="rewards-section">
-                            <h3>Recompensas Disponibles</h3>
-                            <div class="rewards-grid" id="availableRewards"></div>
-                        </div>
-                        <div class="rewards-section">
-                            <h3>Objetivos Actuales</h3>
-                            <div class="rewards-grid" id="objectiveList"></div>
-                        </div>
-                        <div class="rewards-section">
-                            <h3>Mi Información</h3>
-                            <div class="user-rewards-info">
-                                <div class="info-card">
-                                    <span class="info-label">Puntos Totales:</span>
-                                    <span class="info-value" id="totalPoints">0</span>
-                                </div>
-                                <div class="info-card">
-                                    <span class="info-label">Nivel Actual:</span>
-                                    <span class="info-value" id="currentLevel">1</span>
-                                </div>
-                                <div class="info-card">
-                                    <span class="info-label">Recompensas:</span>
-                                    <span class="info-value" id="totalRewards">0</span>
-                                </div>
-                            </div>
+                    
+                    <div class="tokens-card" style="background: linear-gradient(135deg, #f59e0b, #f97316); color: white; padding: 20px; border-radius: 16px; margin-bottom: 25px; text-align: center;">
+                        <div style="font-size: 0.9rem; opacity: 0.9;">TUS TOKENS</div>
+                        <div style="font-size: 3rem; font-weight: 800;" id="tokensDisplay">0</div>
+                        <div style="font-size: 0.8rem;">⭐ Canjea por recompensas increíbles</div>
+                    </div>
+                    
+                    <div class="recompensas-grid" id="recompensasGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                        <!-- Las recompensas se cargarán aquí -->
+                    </div>
+                    
+                    <div class="mis-canjes-section">
+                        <h3>📜 Mis Canjes</h3>
+                        <div id="misCanjesList" style="background: #f8fafc; border-radius: 12px; padding: 15px;">
+                            <p class="text-muted">Aún no has canjeado ninguna recompensa.</p>
                         </div>
                     </div>
                 </section>
@@ -562,5 +549,6 @@
             </div>
         </div>
     </div>
+
 </body>
 </html>
