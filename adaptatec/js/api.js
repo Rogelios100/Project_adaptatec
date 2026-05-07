@@ -166,6 +166,28 @@ export async function apiUpdateProgress(materiaId, progress, modulosCompletados,
   }
 }
 
+export async function apiUpdateModuleProgress(materiaId, moduloIndex) {
+  try {
+    const response = await fetch(`${API_BASE}/users/progress/${materiaId}/modules/${moduloIndex}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader()
+      }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Error al actualizar el progreso del módulo');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error en apiUpdateModuleProgress:', error);
+    throw error;
+  }
+}
+
 /**
  * Registrar una actividad del usuario
  */

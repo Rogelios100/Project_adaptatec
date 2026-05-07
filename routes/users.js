@@ -59,6 +59,27 @@ router.get('/profile', verifyToken, async (req, res) => {
       ORDER BY m.id
     `, [req.user.id]);
 
+    const materiaIds = materias.map(m => m.id);
+    let completedModuleMap = {};
+
+    if (materiaIds.length > 0) {
+      const placeholders = materiaIds.map(() => '?').join(',');
+      const moduleProgressRows = await all(`
+        SELECT mo.materiaId, mo.orden
+        FROM modulo_progress mp
+        JOIN user_progress up ON mp.userProgressId = up.id
+        JOIN modulos mo ON mp.moduloId = mo.id
+        WHERE up.userId = ? AND mo.materiaId IN (${placeholders}) AND mp.completado = TRUE
+      `, [req.user.id, ...materiaIds]);
+
+      moduleProgressRows.forEach(row => {
+        completedModuleMap[row.materiaId] = completedModuleMap[row.materiaId] || [];
+        completedModuleMap[row.materiaId].push(row.orden - 1);
+      });
+
+      Object.values(completedModuleMap).forEach(arr => arr.sort((a, b) => a - b));
+    }
+
     const summary = await computeUserProgressSummary(req.user.id);
     await run(
       'UPDATE users SET horas = ?, puntos = ?, logros = ?, totalLogros = ?, nivel = ? WHERE id = ?',
@@ -90,7 +111,8 @@ router.get('/profile', verifyToken, async (req, res) => {
         progress: m.progress || 0,
         modulosCompletados: m.modulosCompletados || 0,
         totalModulos: m.totalModulos || 12,
-        horasEstudio: m.horasEstudio || 0
+        horasEstudio: m.horasEstudio || 0,
+        completedModuleIndexes: completedModuleMap[m.id] || []
       })),
       recent: recent.map(r => r.descripcion)
     });
@@ -130,6 +152,63 @@ router.put('/progress/:materiaId', verifyToken, async (req, res) => {
   }
 });
 
+router.put('/progress/:materiaId/modules/:moduloIndex', verifyToken, async (req, res) => {
+  try {
+    const { materiaId, moduloIndex } = req.params;
+    const orden = parseInt(moduloIndex, 10) + 1;
+
+    const modulo = await get('SELECT id FROM modulos WHERE materiaId = ? AND orden = ?', [materiaId, orden]);
+    if (!modulo) {
+      return res.status(404).json({ error: 'Módulo no encontrado' });
+    }
+
+    let userProgress = await get('SELECT id FROM user_progress WHERE userId = ? AND materiaId = ?', [req.user.id, materiaId]);
+    if (!userProgress) {
+      await run(
+        'INSERT INTO user_progress (userId, materiaId, totalModulos, lastAccessed) VALUES (?, ?, (SELECT total_modulos FROM materias WHERE id = ?), CURRENT_TIMESTAMP)',
+        [req.user.id, materiaId, materiaId]
+      );
+      userProgress = await get('SELECT id FROM user_progress WHERE userId = ? AND materiaId = ?', [req.user.id, materiaId]);
+    }
+
+    await run(
+      `INSERT INTO modulo_progress (userProgressId, moduloId, completado, fecha_completado) VALUES (?, ?, TRUE, CURRENT_TIMESTAMP)
+       ON DUPLICATE KEY UPDATE completado = TRUE, fecha_completado = CURRENT_TIMESTAMP`,
+      [userProgress.id, modulo.id]
+    );
+
+    const completedCountRow = await get('SELECT COUNT(*) as count FROM modulo_progress WHERE userProgressId = ? AND completado = TRUE', [userProgress.id]);
+    const completedCount = completedCountRow?.count || 0;
+
+    const totalCountRow = await get('SELECT COUNT(*) as total FROM modulos WHERE materiaId = ?', [materiaId]);
+    const totalModulos = totalCountRow?.total || 0;
+    const progress = totalModulos ? Math.round((completedCount / totalModulos) * 100) : 0;
+
+    await run(
+      'UPDATE user_progress SET modulosCompletados = ?, progress = ?, lastAccessed = CURRENT_TIMESTAMP WHERE id = ?',
+      [completedCount, progress, userProgress.id]
+    );
+
+    await syncUserSummary(req.user.id);
+
+    const completedRows = await all(
+      'SELECT mo.orden FROM modulo_progress mp JOIN modulos mo ON mp.moduloId = mo.id WHERE mp.userProgressId = ? AND mp.completado = TRUE',
+      [userProgress.id]
+    );
+    const completedModuleIndexes = completedRows.map(r => r.orden - 1);
+
+    res.json({
+      message: 'Progreso de módulo actualizado',
+      completedModuleIndexes,
+      modulosCompletados: completedCount,
+      progress
+    });
+  } catch (error) {
+    console.error('Error al actualizar progreso de módulo:', error);
+    res.status(500).json({ error: 'Error al actualizar progreso de módulo' });
+  }
+});
+
 // Registrar actividad
 router.post('/activity', verifyToken, async (req, res) => {
   try {
@@ -139,7 +218,7 @@ router.post('/activity', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Descripción requerida' });
     }
 
-    await require('../config/database.js').run(
+    await run(
       'INSERT INTO activities (userId, descripcion, tipo) VALUES (?, ?, ?)',
       [req.user.id, descripcion, tipo || 'general']
     );
