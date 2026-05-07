@@ -1,17 +1,24 @@
 {
   "name": "adaptatec",
   "version": "1.0.0",
-  "description": "Plataforma educativa con IA adaptativa",
+  "description": "Plataforma educativa con IA adaptativa para mejorar el aprendizaje de los estudiantes",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "postinstall": "echo 'Instalación completa. Crea un archivo .env con las variables de configuración necesarias'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "keywords": [
     "educacion",
     "IA",
-    "aprendizaje"
+    "aprendizaje",
+    "node",
+    "express",
+    "mysql"
   ],
   "author": "Adaptatec Team",
   "license": "MIT",

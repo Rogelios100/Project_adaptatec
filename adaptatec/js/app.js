@@ -166,10 +166,24 @@ function saveMaterias() {
     // Ya no se necesita guardar en localStorage - los datos se sincronizan con el servidor
 }
 
+function getMateriaCompletedCount(materia) {
+    if (Array.isArray(materia.completedModuleIndexes)) {
+        return materia.completedModuleIndexes.length;
+    }
+    return materia.modulosCompletados || 0;
+}
+
+function isModuloCompletado(materia, index) {
+    if (Array.isArray(materia.completedModuleIndexes)) {
+        return materia.completedModuleIndexes.includes(index);
+    }
+    return index < (materia.modulosCompletados || 0);
+}
+
 function calcularEstadisticasGenerales() {
     if (!currentUser || currentUser.role !== 'alumno') return;
     const materias = currentUser.materias || [];
-    const totalModulos = materias.reduce((sum, m) => sum + (m.modulosCompletados || 0), 0);
+    const totalModulos = materias.reduce((sum, m) => sum + getMateriaCompletedCount(m), 0);
     const totalHoras = materias.reduce((sum, m) => sum + (m.horasEstudio || 0), 0);
     const progresoPromedio = materias.length ? Math.round(materias.reduce((sum, m) => sum + (m.progress || 0), 0) / materias.length) : 0;
     
@@ -322,6 +336,7 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
     
     currentMateriaId = materiaId;
     const modulos = modulosPorMateria[materiaId] || [`Módulo 1`, `Módulo 2`, `Módulo 3`];
+<<<<<<< HEAD
     
     // Cargar módulos completados desde localStorage Y BD
     await cargarModulosCompletadosLocal(materiaId);
@@ -343,6 +358,20 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
     if (container) {
         container.innerHTML = modulos.map((modulo, index) => {
             const estaCompletado = modulosCompletadosMap.get(`${materiaId}_${index}`) === true;
+=======
+    const completados = getMateriaCompletedCount(materia);
+    const completedSet = new Set(materia.completedModuleIndexes || []);
+
+    const titleEl = document.getElementById('modulosMateriaTitle');
+    const descEl = document.getElementById('modulosMateriaDesc');
+    if (titleEl) titleEl.innerText = materia.name;
+    if (descEl) descEl.innerHTML = `Progreso: ${materia.progress}% completado | Módulos completados: ${completados}/${materia.totalModulos}`;
+
+    const container = document.getElementById('modulosGrid');
+    if (container) {
+        container.innerHTML = modulos.map((modulo, index) => {
+            const estaCompletado = completedSet.has(index);
+>>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
             return `
                 <div class="modulo-card ${estaCompletado ? 'completado' : 'pendiente'}" data-modulo-index="${index}" data-materia-id="${materiaId}">
                     <div class="modulo-info">
@@ -524,13 +553,14 @@ function renderDashboard() {
         let materiasHtml = '';
         if (materias.length > 0) {
             materias.forEach(m => {
+                const completedCount = getMateriaCompletedCount(m);
                 materiasHtml += `
                     <div class="materia-progress-item">
                         <p><strong>${m.name}</strong> • ${m.progress}% completado</p>
                         <div class="progress-bar">
                             <div class="progress-fill" style="width:${m.progress}%;"></div>
                         </div>
-                        <p class="small-text">${m.modulosCompletados || 0}/${m.totalModulos || 0} módulos • ${m.horasEstudio || 0}h</p>
+                        <p class="small-text">${completedCount}/${m.totalModulos || 0} módulos • ${m.horasEstudio || 0}h</p>
                     </div>
                 `;
             });
@@ -573,14 +603,16 @@ function renderMaterias() {
     const coloresCard = ['#eff6ff', '#f0fdf4', '#fff7ed', '#faf5ff', '#fff1f2', '#ecfeff'];
     
     const materias = currentUser.materias || [];
-    container.innerHTML = materias.map((m, idx) => `
+    container.innerHTML = materias.map((m, idx) => {
+        const completedCount = getMateriaCompletedCount(m);
+        return `
         <div class="materia-card" data-materia-id="${m.id}" style="background: ${coloresCard[idx % coloresCard.length]};">
             <div class="materia-header">
                 <h3>${m.name}</h3>
                 <span class="materia-icon">${m.icon || '📘'}</span>
             </div>
             <div class="materia-stats">
-                <span>📋 ${m.modulosCompletados}/${m.totalModulos} módulos</span>
+                <span>📋 ${completedCount}/${m.totalModulos} módulos</span>
                 <span>⏱️ ${m.horasEstudio}h</span>
             </div>
             <div class="progress-section">
@@ -593,7 +625,8 @@ function renderMaterias() {
                 💬 Pregunta a la IA sobre esta materia
             </button>
         </div>
-    `).join('');
+    `;
+    }).join('');
     
     document.querySelectorAll('.materia-card').forEach(card => {
         card.addEventListener('click', (e) => {
@@ -1121,16 +1154,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 });
 
-if (chatSend) {
-    chatSend.addEventListener('click', enviarMensaje);
-}
-
-if (chatInput) {
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') enviarMensaje();
-    });
-}
-
 function verContenidoModulo(materiaId, moduloIndex, moduloNombre) {
     const materia = currentUser.materias.find(m => m.id === materiaId);
     if (!materia) return;
@@ -1607,6 +1630,7 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
     const materia = currentUser.materias.find(m => m.id === materiaId);
     if (!materia) throw new Error('Materia no encontrada');
     
+<<<<<<< HEAD
     const moduloKey = `${materiaId}_${moduloIndex}`;
     
     // Verificar si ya está completado
@@ -1617,9 +1641,17 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
     
     console.log(`📝 Completando módulo independiente: ${moduloNombre} (${moduloKey})`);
     
+=======
+    const completedIndexes = Array.isArray(materia.completedModuleIndexes) ? [...materia.completedModuleIndexes] : [];
+    if (completedIndexes.includes(moduloIndex)) {
+        return;
+    }
+
+>>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
     try {
-        const token = localStorage.getItem('adaptatec_token');
+        const result = await API.apiUpdateModuleProgress(materiaId, moduloIndex);
         
+<<<<<<< HEAD
         // Guardar en localStorage localmente
         guardarModuloCompletadoLocal(materiaId, moduloIndex);
         
@@ -1649,17 +1681,24 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
         materia.progress = nuevoProgreso;
         
         // Registrar actividad
+=======
+        materia.completedModuleIndexes = Array.from(new Set([...(materia.completedModuleIndexes || []), moduloIndex])).sort((a, b) => a - b);
+        materia.modulosCompletados = result.modulosCompletados ?? getMateriaCompletedCount(materia);
+        materia.progress = result.progress ?? Math.round((materia.modulosCompletados / materia.totalModulos) * 100);
+
+>>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
         await fetch('/api/users/activity', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${localStorage.getItem('adaptatec_token')}`
             },
             body: JSON.stringify({
                 descripcion: `🎉 ¡Completaste el módulo "${moduloNombre}" en ${materia.name}!`,
                 tipo: 'modulo'
             })
         });
+<<<<<<< HEAD
         
         // Actualizar estadísticas
         calcularEstadisticasGenerales();
@@ -1669,6 +1708,12 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
         
         console.log(`✅ Módulo "${moduloNombre}" completado exitosamente`);
         
+=======
+
+        calcularEstadisticasGenerales();
+
+        console.log(`✅ Módulo "${moduloNombre}" completado. Progreso de materia: ${materia.progress}%`);
+>>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
     } catch (error) {
         console.error('Error al marcar módulo completado:', error);
         throw error;
