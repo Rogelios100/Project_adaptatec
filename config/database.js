@@ -82,6 +82,14 @@ async function createTables() {
     ) ENGINE=InnoDB;
   `);
 
+  await run(`
+    ALTER TABLE materias ADD COLUMN IF NOT EXISTS total_modulos INT DEFAULT 12;
+  `);
+
+  await run(`
+    ALTER TABLE materias ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE;
+  `);
+
   // 3. Tabla de módulos (para desglose granular)
   await run(`
     CREATE TABLE IF NOT EXISTS modulos (
@@ -350,7 +358,10 @@ async function insertAdminUser() {
 }
 
 async function insertDemoAlumno() {
-  const existingAlumno = await get('SELECT id FROM users WHERE matricula = ?', ['ALU-001']);
+  const existingAlumno = await get(
+    'SELECT id FROM users WHERE matricula = ? OR username = ? LIMIT 1',
+    ['ALU-001', 'ALU001']
+  );
   if (existingAlumno) return;
 
   const hashedPassword = bcrypt.hashSync('123', 10);
