@@ -2,38 +2,18 @@
 import * as API from './api.js';
 
 // ========== DATA MODEL ==========
-// Los usuarios y materias ahora vienen del servidor
-let users = []; // Se cargarán desde el servidor
-let materiasGlobal = []; // Se cargarán desde el servidor
-
+let users = [];
+let materiasGlobal = [];
 let examenActual = null;
 let respuestasUsuario = [];
 let examenGenerado = false;
-
-// ========== MÓDULOS INDEPENDIENTES ==========
-let modulosCompletadosMap = new Map(); // Guarda módulos completados por materiaId_moduloIndex
-
-let recompensasObtenidas = new Set();
-
 let currentUser = null;
 let currentMateriaId = null;
-
-// Gemini Configuration - Ahora se maneja en el backend
-// Ya no necesitamos API key en el frontend
 
 // Chart instances
 let horasChart, califChart, materiasChart;
 
-// ========== SISTEMA DE TIEMPO DE ESTUDIO ==========
-let tiempoEstudioActivo = false;
-let tiempoAcumulado = 0;
-let ultimoTick = null;
-let heartbeatInterval = null;
-let lastActivityTime = Date.now();
-let materiaActual = null;
-let moduloActual = null;
-
-// Módulos por materia (basados en plan TECNM)
+// Módulos por materia
 const modulosPorMateria = {
     1: ["Introducción a Algoritmos", "Estructuras de Datos Lineales", "Pilas y Colas", "Árboles Binarios", "Árboles AVL", "Grafos", "Algoritmos de Ordenamiento", "Algoritmos de Búsqueda", "Complejidad Computacional", "Recursividad", "Backtracking", "Programación Dinámica"],
     2: ["HTML5 Semántico", "CSS3 Avanzado", "Flexbox y Grid", "JavaScript Básico", "DOM Manipulación", "Eventos", "Fetch API", "React Introducción", "Componentes", "Estado y Props", "Hooks", "Routing", "Despliegue", "Optimización", "Pruebas Unitarias"],
@@ -43,129 +23,7 @@ const modulosPorMateria = {
     6: ["Criptografía Básica", "Autenticación", "Autorización", "OWASP Top 10", "Inyección SQL", "XSS", "CSRF", "Seguridad en Redes", "Firewalls", "Auditoría", "Respuesta a Incidentes", "Normativas", "Seguridad en la Nube"]
 };
 
-// ========== FUNCIONES DE TIEMPO DE ESTUDIO ==========
-
-/**
- * Iniciar conteo de tiempo de estudio
- */
-function iniciarContadorTiempo() {
-    if (tiempoEstudioActivo) return;
-    
-    tiempoEstudioActivo = true;
-    tiempoAcumulado = 0;
-    ultimoTick = Date.now();
-    
-    console.log('⏱️ Contador de tiempo de estudio iniciado');
-    
-    // Enviar heartbeat cada 60 segundos
-    if (heartbeatInterval) clearInterval(heartbeatInterval);
-    heartbeatInterval = setInterval(enviarHeartbeat, 60000); // Cada minuto
-}
-
-/**
- * Detener conteo de tiempo de estudio
- */
-function detenerContadorTiempo() {
-    if (!tiempoEstudioActivo) return;
-    
-    // Enviar último tiempo antes de detener
-    if (tiempoAcumulado > 0) {
-        enviarHeartbeat();
-    }
-    
-    tiempoEstudioActivo = false;
-    if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-    }
-    
-    console.log('⏱️ Contador de tiempo de estudio detenido');
-}
-
-/**
- * Enviar heartbeat con tiempo acumulado
- */
-async function enviarHeartbeat() {
-    if (!currentUser || currentUser.role !== 'alumno') return;
-    
-    const ahora = Date.now();
-    const segundosTranscurridos = Math.floor((ahora - ultimoTick) / 1000);
-    
-    if (segundosTranscurridos >= 5) { // Solo enviar si pasaron al menos 5 segundos
-        tiempoAcumulado += segundosTranscurridos;
-        
-        console.log(`💓 Heartbeat: +${segundosTranscurridos}s (Total acumulado: ${tiempoAcumulado}s)`);
-        
-        try {
-            await API.apiSendHeartbeat(segundosTranscurridos, currentMateriaId, null);
-            
-            // Actualizar UI si es necesario
-            const horasElement = document.getElementById('horasSemana');
-            if (horasElement) {
-                const horasActuales = parseFloat(horasElement.innerText) || 0;
-                const nuevasHoras = horasActuales + (segundosTranscurridos / 3600);
-                horasElement.innerText = nuevasHoras.toFixed(1) + 'h';
-            }
-            
-        } catch (error) {
-            console.error('Error enviando heartbeat:', error);
-        }
-    }
-
-    if (tiempoAcumulado >= 3600) { // Cada hora completa
-        const horasCompletas = Math.floor(tiempoAcumulado / 3600);
-        await otorgarTokens(horasCompletas * 5, `${horasCompletas} hora(s) de estudio`);
-        tiempoAcumulado = tiempoAcumulado % 3600;
-    }
-    
-    ultimoTick = ahora;
-}
-
-/**
- * Detectar actividad del usuario (para no contar tiempo idle)
- */
-function reiniciarActividad() {
-    lastActivityTime = Date.now();
-    if (tiempoEstudioActivo && ultimoTick) {
-        // Reajustar el tick para evitar contar tiempo idle
-        ultimoTick = Date.now();
-    }
-}
-
-// Detectar actividad del usuario
-const eventosActividad = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-eventosActividad.forEach(evento => {
-    document.addEventListener(evento, reiniciarActividad);
-});
-
-// Detectar cuando la página pierde foco
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        // Página en segundo plano - pausar conteo
-        if (tiempoEstudioActivo) {
-            enviarHeartbeat(); // Enviar tiempo antes de pausar
-            tiempoEstudioActivo = false;
-        }
-    } else {
-        // Página visible - reanudar
-        if (currentUser?.role === 'alumno') {
-            ultimoTick = Date.now();
-            tiempoEstudioActivo = true;
-        }
-    }
-});
-
-
-
 // ========== UTILITIES ==========
-function saveUsers() {
-    // Ya no se necesita guardar en localStorage - los datos se sincronizan con el servidor
-}
-
-function saveMaterias() {
-    // Ya no se necesita guardar en localStorage - los datos se sincronizan con el servidor
-}
-
 function getMateriaCompletedCount(materia) {
     if (Array.isArray(materia.completedModuleIndexes)) {
         return materia.completedModuleIndexes.length;
@@ -196,182 +54,23 @@ function calcularEstadisticasGenerales() {
     if (progresoPromedioEl) progresoPromedioEl.innerText = progresoPromedio;
 }
 
-// ========== FUNCIONES PARA MÓDULOS INDEPENDIENTES ==========
-
-
-async function cargarModulosCompletadosLocal(materiaId) {
-    // Limpiar el Map para esta materia antes de cargar
-    for (let i = 0; i < 20; i++) {
-        modulosCompletadosMap.delete(`${materiaId}_${i}`);
-    }
-    
-    // Cargar SOLO desde backend (fuente de verdad)
-    try {
-        const token = localStorage.getItem('adaptatec_token');
-        const response = await fetch(`/api/users/modulos-completados?materiaId=${materiaId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log(`📥 Cargando desde backend para materia ${materiaId}:`, data);
-            
-            data.forEach(modulo => {
-                if (modulo.materiaId == materiaId) {
-                    modulosCompletadosMap.set(`${materiaId}_${modulo.moduloId}`, true);
-                }
-            });
-            
-            // Actualizar localStorage con los datos correctos del backend
-            const userId = currentUser?.id;
-            const completados = [];
-            for (let i = 0; i < 20; i++) {
-                if (modulosCompletadosMap.get(`${materiaId}_${i}`) === true) {
-                    completados.push(i);
-                }
-            }
-            localStorage.setItem(`modulos_completados_${userId}_${materiaId}`, JSON.stringify(completados));
-        }
-    } catch (error) {
-        console.warn('No se pudo cargar módulos del backend:', error);
-    }
-}
-
-
-async function cargarTodosModulosCompletados() {
-    // ✅ LIMPIAR EL MAP ANTES DE CARGAR NUEVOS DATOS
-    modulosCompletadosMap.clear();
-    console.log('🗑️ Map de módulos limpiado para nuevo usuario');
-    
-    try {
-        const token = localStorage.getItem('adaptatec_token');
-        const response = await fetch('/api/users/modulos-completados', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (response.ok) {
-            const modulos = await response.json();
-            console.log(`📥 Cargando ${modulos.length} módulos completados para el usuario actual`);
-            
-            modulos.forEach(modulo => {
-                modulosCompletadosMap.set(`${modulo.materiaId}_${modulo.moduloId}`, true);
-            });
-            
-            // Guardar en localStorage por materia
-            const porMateria = {};
-            modulos.forEach(modulo => {
-                if (!porMateria[modulo.materiaId]) porMateria[modulo.materiaId] = [];
-                porMateria[modulo.materiaId].push(modulo.moduloId);
-            });
-            
-            for (const [materiaId, completados] of Object.entries(porMateria)) {
-                localStorage.setItem(`modulos_completados_${materiaId}`, JSON.stringify(completados));
-            }
-        }
-    } catch (error) {
-        console.error('Error cargando módulos completados:', error);
-    }
-}
-
-function guardarTodosModulosCompletados(materiaId) {
-    const userId = currentUser?.id;
-    if (!userId) return;
-    
-    const completados = [];
-    for (let i = 0; i < 20; i++) {
-        if (modulosCompletadosMap.get(`${materiaId}_${i}`) === true) {
-            completados.push(i);
-        }
-    }
-    if (completados.length > 0) {
-        localStorage.setItem(`modulos_completados_${userId}_${materiaId}`, JSON.stringify(completados));
-    }
-}
-
-async function guardarModuloCompletadoLocal(materiaId, moduloIndex) {
-    const key = `modulos_completados_${materiaId}`;
-    const saved = localStorage.getItem(key);
-    let completados = saved ? JSON.parse(saved) : [];
-    if (!completados.includes(moduloIndex)) {
-        completados.push(moduloIndex);
-        localStorage.setItem(key, JSON.stringify(completados));
-    }
-    modulosCompletadosMap.set(`${materiaId}_${moduloIndex}`, true);
-    
-    // También guardar en el backend
-    try {
-        const token = localStorage.getItem('adaptatec_token');
-        await fetch('/api/users/modulo-completado', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                materiaId: materiaId,
-                moduloId: moduloIndex,
-                moduloNombre: `Módulo ${moduloIndex + 1}`
-            })
-        });
-    } catch (error) {
-        console.error('Error guardando módulo en backend:', error);
-    }
-}
-
-function calcularModulosCompletadosMateria(materiaId) {
-    let count = 0;
-    const modulos = modulosPorMateria[materiaId] || [];
-    for (let i = 0; i < modulos.length; i++) {
-        if (modulosCompletadosMap.get(`${materiaId}_${i}`) === true) {
-            count++;
-        }
-    }
-    return count;
-}
-
-
-async function abrirModulosMateria(materiaId, abrirChat = false) {
+function abrirModulosMateria(materiaId, abrirChat = false) {
     const materia = currentUser.materias.find(m => m.id === materiaId);
     if (!materia) return;
     
     currentMateriaId = materiaId;
     const modulos = modulosPorMateria[materiaId] || [`Módulo 1`, `Módulo 2`, `Módulo 3`];
-<<<<<<< HEAD
-    
-    // Cargar módulos completados desde localStorage Y BD
-    await cargarModulosCompletadosLocal(materiaId);
-    
-    // Calcular módulos completados de esta materia
-    const completados = calcularModulosCompletadosMateria(materiaId);
-    const nuevoProgreso = Math.round((completados / materia.totalModulos) * 100);
-    
-    // Actualizar materia localmente
-    materia.modulosCompletados = completados;
-    materia.progress = nuevoProgreso;
-    
-    const titleEl = document.getElementById('modulosMateriaTitle');
-    const descEl = document.getElementById('modulosMateriaDesc');
-    if (titleEl) titleEl.innerText = materia.name;
-    if (descEl) descEl.innerHTML = `Progreso: ${nuevoProgreso}% completado | Módulos completados: ${completados}/${materia.totalModulos}`;
-    
-    const container = document.getElementById('modulosGrid');
-    if (container) {
-        container.innerHTML = modulos.map((modulo, index) => {
-            const estaCompletado = modulosCompletadosMap.get(`${materiaId}_${index}`) === true;
-=======
     const completados = getMateriaCompletedCount(materia);
-    const completedSet = new Set(materia.completedModuleIndexes || []);
-
+    
     const titleEl = document.getElementById('modulosMateriaTitle');
     const descEl = document.getElementById('modulosMateriaDesc');
     if (titleEl) titleEl.innerText = materia.name;
     if (descEl) descEl.innerHTML = `Progreso: ${materia.progress}% completado | Módulos completados: ${completados}/${materia.totalModulos}`;
-
+    
     const container = document.getElementById('modulosGrid');
     if (container) {
         container.innerHTML = modulos.map((modulo, index) => {
-            const estaCompletado = completedSet.has(index);
->>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
+            const estaCompletado = isModuloCompletado(materia, index);
             return `
                 <div class="modulo-card ${estaCompletado ? 'completado' : 'pendiente'}" data-modulo-index="${index}" data-materia-id="${materiaId}">
                     <div class="modulo-info">
@@ -400,54 +99,40 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
         }).join('');
     }
     
-    // Agregar event listeners para botones de ver contenido
     document.querySelectorAll('.btn-ver-modulo').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const modulo = btn.dataset.modulo;
             const index = parseInt(btn.dataset.index);
             const materiaIdLocal = parseInt(btn.dataset.materiaId);
-            verContenidoModulo(materiaIdLocal, index, modulo);
+            verContenidoModulo(materiaIdLocal, index, btn.dataset.modulo);
         });
     });
     
-    // Agregar event listeners para botones de examen
     document.querySelectorAll('.btn-examen-modulo').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const modulo = btn.dataset.modulo;
             const index = parseInt(btn.dataset.index);
             const materiaIdLocal = parseInt(btn.dataset.materiaId);
-            iniciarExamen(materia, index, modulo);
+            iniciarExamen(materia, index, btn.dataset.modulo);
         });
     });
     
-    // Clik en la tarjeta del módulo (ver contenido)
     document.querySelectorAll('.modulo-card').forEach(card => {
         card.addEventListener('click', (e) => {
             if (e.target.classList.contains('btn-ver-modulo') || e.target.classList.contains('btn-examen-modulo')) return;
             const index = parseInt(card.dataset.moduloIndex);
-            const modulo = modulos[index];
-            const materiaIdLocal = parseInt(card.dataset.materiaId);
-            verContenidoModulo(materiaIdLocal, index, modulo);
+            verContenidoModulo(parseInt(card.dataset.materiaId), index, modulos[index]);
         });
     });
     
-    // Cambiar a la vista de módulos
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     const modulosView = document.getElementById('modulosView');
     if (modulosView) modulosView.classList.add('active');
     
-    // Mostrar la burbuja IA
     const chatFab = document.getElementById('chatFab');
     if (chatFab) chatFab.classList.add('visible');
     
-    // Si se solicitó abrir el chat automáticamente
-    if (abrirChat) {
-        setTimeout(() => {
-            abrirChatConContexto(materia.name);
-        }, 300);
-    }
+    if (abrirChat) setTimeout(() => abrirChatConContexto(materia.name), 300);
 }
 
 
@@ -647,116 +332,85 @@ function renderMaterias() {
     calcularEstadisticasGenerales();
 }
 
-async function renderRecompensas() {
-    if (!currentUser || currentUser.role !== 'alumno') return;
-    
-    // Mostrar tokens
-    const tokens = currentUser.tokens || 0;
-    const tokensDisplay = document.getElementById('tokensDisplay');
-    if (tokensDisplay) tokensDisplay.innerText = tokens;
-    
-    // Cargar recompensas disponibles
-    try {
-        const token = localStorage.getItem('adaptatec_token');
-        
-        // Obtener recompensas
-        const recompensasRes = await fetch('/api/users/recompensas-canjeables', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const recompensas = await recompensasRes.json();
-        
-        // Obtener canjes del usuario
-        const canjesRes = await fetch('/api/users/mis-canjes', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const canjes = await canjesRes.json();
-        
-        // Renderizar recompensas
-        const grid = document.getElementById('recompensasGrid');
-        if (grid) {
-            grid.innerHTML = recompensas.map(r => `
-                <div class="recompensa-card" style="background: white; border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: transform 0.2s;">
-                    <div style="font-size: 3rem; margin-bottom: 10px;">${r.nombre.charAt(0)}</div>
-                    <h3 style="margin: 10px 0 5px; font-size: 1.1rem;">${r.nombre}</h3>
-                    <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 15px;">${r.descripcion}</p>
-                    <div style="font-weight: bold; color: #f59e0b; margin-bottom: 15px;">⭐ ${r.tokens_necesarios} tokens</div>
-                    <button class="btn-canjear" data-id="${r.id}" data-nombre="${r.nombre}" data-tokens="${r.tokens_necesarios}" 
-                        style="background: ${tokens >= r.tokens_necesarios ? '#3b82f6' : '#cbd5e1'}; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: ${tokens >= r.tokens_necesarios ? 'pointer' : 'not-allowed'}; width: 100%; font-weight: 500;">
-                        ${tokens >= r.tokens_necesarios ? 'Canjear' : 'Tokens insuficientes'}
-                    </button>
-                </div>
-            `).join('');
-        }
-        
-        // Agregar event listeners a botones de canje
-        document.querySelectorAll('.btn-canjear').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id = btn.dataset.id;
-                const nombre = btn.dataset.nombre;
-                const tokensNecesarios = parseInt(btn.dataset.tokens);
-                
-                if (tokens < tokensNecesarios) {
-                    alert(`❌ Necesitas ${tokensNecesarios} tokens para canjear ${nombre}`);
-                    return;
-                }
-                
-                if (confirm(`¿Canjear ${nombre} por ${tokensNecesarios} tokens?`)) {
-                    await canjearRecompensa(id, nombre, tokensNecesarios);
-                }
-            });
-        });
-        
-        // Renderizar canjes realizados
-        const canjesList = document.getElementById('misCanjesList');
-        if (canjesList) {
-            if (canjes.length === 0) {
-                canjesList.innerHTML = '<p class="text-muted">📭 Aún no has canjeado ninguna recompensa.</p>';
-            } else {
-                canjesList.innerHTML = canjes.map(c => `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border-radius: 8px; margin-bottom: 8px;">
-                        <div>
-                            <strong>${c.nombre}</strong>
-                            <p style="margin: 0; font-size: 0.8rem; color: #64748b;">${new Date(c.fecha_canje).toLocaleDateString()}</p>
-                        </div>
-                        <span style="background: ${c.estado === 'entregado' ? '#10b981' : '#f59e0b'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem;">
-                            ${c.estado === 'entregado' ? 'Entregado' : 'Pendiente'}
-                        </span>
-                    </div>
-                `).join('');
-            }
-        }
-        
-    } catch (error) {
-        console.error('Error cargando recompensas:', error);
-    }
-}
+function renderRecompensas() {
+    if (!currentUser) return;
 
-async function canjearRecompensa(recompensaId, nombre, tokensNecesarios) {
-    try {
-        const token = localStorage.getItem('adaptatec_token');
-        const response = await fetch('/api/users/canjear', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ recompensaId })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            alert(`✅ ¡Canje exitoso! ${nombre}\n\n${data.mensaje}`);
-            // Actualizar tokens
-            if (currentUser) currentUser.tokens = data.tokensRestantes;
-            // Recargar vista
-            renderRecompensas();
+    const unlockedDiv = document.getElementById('unlockedRewards');
+    const availableDiv = document.getElementById('availableRewards');
+    const objectiveDiv = document.getElementById('objectiveList');
+
+    if (currentUser.role === 'alumno') {
+        const materias = currentUser.materias || [];
+        const totalHoras = materias.reduce((sum, m) => sum + (m.horasEstudio || 0), 0);
+        const averageProgress = materias.length ? Math.round(materias.reduce((sum, m) => sum + (m.progress || 0), 0) / materias.length) : 0;
+        const completed = materias.filter(m => (m.progress || 0) >= 100).length;
+        const points = currentUser.puntos || Math.max(0, totalHoras + averageProgress + completed * 10);
+        const currentLevel = currentUser.nivel || Math.max(1, Math.ceil(averageProgress / 20));
+        const totalRewards = currentUser.logros || Math.min(Math.max(currentUser.totalLogros || 8, materias.length * 4), completed * 2 + Math.floor(averageProgress / 25));
+
+        const unlocked = [];
+        const available = [];
+        const objectives = [];
+
+        const stepOneComplete = completed >= 1 || totalHoras >= 10;
+        const steadyProgress = averageProgress >= 75;
+        const algoMaster = materias.some(m => m.name?.toLowerCase().includes('algoritmos') && (m.progress || 0) >= 85);
+        const domMaster = materias.some(m => m.name?.toLowerCase().includes('web') && (m.progress || 0) >= 80);
+
+        if (stepOneComplete) {
+            unlocked.push('🏅 Primer Paso');
+            objectives.push({ title: 'Completa tu primera materia', status: 'Completado' });
         } else {
-            alert(`❌ Error: ${data.error}`);
+            available.push('🔓 Primer Paso al completar tu primera materia o registrar 10 horas de estudio.');
+            objectives.push({ title: 'Completa tu primera materia', status: `${Math.min(100, Math.round((completed > 0 ? 50 : 0) + (totalHoras / 10) * 50))}%` });
         }
-    } catch (error) {
-        console.error('Error en canje:', error);
-        alert('Error al procesar el canje. Intenta de nuevo.');
+
+        if (steadyProgress) {
+            unlocked.push('⚡ Progreso Constante');
+            objectives.push({ title: 'Mantener 75% de progreso promedio', status: 'Completado' });
+        } else {
+            available.push('🔓 Progreso Constante al mantener 75% o más de avance promedio.');
+            objectives.push({ title: 'Mantener 75% de progreso promedio', status: `${averageProgress}%` });
+        }
+
+        if (algoMaster) {
+            unlocked.push('💯 Experto en algoritmos');
+            objectives.push({ title: '85% en Algoritmos', status: 'Completado' });
+        } else {
+            available.push('🔓 Experto en algoritmos al alcanzar 85% en Algoritmos.');
+            objectives.push({ title: '85% en Algoritmos', status: `${Math.max(0, materias.find(m => m.name?.toLowerCase().includes('algoritmos'))?.progress || 0)}%` });
+        }
+
+        if (domMaster) {
+            unlocked.push('📚 Maestro del DOM');
+            objectives.push({ title: '80% en Desarrollo Web', status: 'Completado' });
+        } else {
+            available.push('🔓 Maestro del DOM al alcanzar 80% en Desarrollo Web.');
+            objectives.push({ title: '80% en Desarrollo Web', status: `${Math.max(0, materias.find(m => m.name?.toLowerCase().includes('web'))?.progress || 0)}%` });
+        }
+
+        if (unlocked.length === 0) {
+            unlocked.push('Aún no se han desbloqueado recompensas. Sigue avanzando en tus materias.');
+        }
+
+        unlockedDiv.innerHTML = unlocked.map(item => `<span class="reward-item">${item}</span>`).join('');
+        availableDiv.innerHTML = available.map(item => `<span class="reward-item">${item}</span>`).join('');
+        objectiveDiv.innerHTML = objectives.map(obj => `
+            <div class="reward-item objective-item">
+                <strong>${obj.title}</strong>
+                <span>${obj.status}</span>
+            </div>
+        `).join('');
+        document.getElementById('totalPoints').innerText = points;
+        document.getElementById('currentLevel').innerText = currentLevel;
+        document.getElementById('totalRewards').innerText = totalRewards;
+    } else {
+        unlockedDiv.innerHTML = '<p>Las recompensas están disponibles solo para estudiantes</p>';
+        availableDiv.innerHTML = '';
+        objectiveDiv.innerHTML = '';
+        document.getElementById('totalPoints').innerText = '-';
+        document.getElementById('currentLevel').innerText = '-';
+        document.getElementById('totalRewards').innerText = '-';
     }
 }
 
@@ -936,9 +590,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     try {
         const user = await API.apiLogin(username, password);
         
-        // ✅ LIMPIAR MAP ANTES DE CARGAR NUEVO USUARIO
-        modulosCompletadosMap.clear();
-        
         // Cargar perfil completo del usuario
         currentUser = await API.apiGetProfile();
         
@@ -947,16 +598,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         document.getElementById('authContainer').classList.add('hidden');
         document.getElementById('appContainer').classList.add('active');
         applyRoleVisibility();
-        
-        // INICIAR CONTADOR DE TIEMPO para alumnos
-        if (currentUser.role === 'alumno') {
-            iniciarContadorTiempo();
-            await cargarRecompensasObtenidas();
-            
-            // ✅ Cargar módulos completados del nuevo usuario
-            await cargarTodosModulosCompletados();
-        }
-        
         if (currentUser.role === 'admin') {
             switchView('admin-panel');
         } else {
@@ -966,16 +607,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         alert('Error: ' + error.message);
         console.error('Login error:', error);
     }
-});
-
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    detenerContadorTiempo();
-    API.apiLogout();
-    currentUser = null;
-    document.getElementById('appContainer').classList.remove('active');
-    document.getElementById('authContainer').classList.remove('hidden');
-    document.getElementById('loginUsername').value = '';
-    document.getElementById('loginPassword').value = '';
 });
 
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
@@ -1010,6 +641,15 @@ document.querySelectorAll('.tab-button').forEach(btn => {
         document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
         document.getElementById(tab + 'Form').classList.add('active');
     });
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    API.apiLogout();
+    currentUser = null;
+    document.getElementById('appContainer').classList.remove('active');
+    document.getElementById('authContainer').classList.remove('hidden');
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
 });
 
 document.querySelectorAll('.nav-button').forEach(btn => {
@@ -1067,8 +707,6 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
 document.getElementById('addCourseBtn')?.addEventListener('click', () => {
     alert('Funcionalidad de agregar curso en desarrollo');
 });
-
-
 
 // ========== CHAT IA FLOTANTE - VERSIÓN SIMPLE Y FUNCIONAL ==========
 document.addEventListener('DOMContentLoaded', function() {
@@ -1391,8 +1029,6 @@ function mostrarExamen(materia, moduloIndex, moduloNombre) {
     modal.style.display = 'flex';
 }
 
-
-
 async function iniciarExamen(materia, moduloIndex, moduloNombre) {
     const modal = document.getElementById('examenModal');
     const preguntasDiv = document.getElementById('examenPreguntas');
@@ -1506,7 +1142,6 @@ async function calificarExamen(materia, moduloIndex, moduloNombre) {
     
     if (aprobado) {
         try {
-            console.log(`📝 Aprobando módulo índice: ${moduloIndex}, nombre: ${moduloNombre}`);
             await marcarModuloCompletado(materia.id, moduloIndex, moduloNombre);
             
             resultadoDiv.innerHTML = `
@@ -1544,14 +1179,6 @@ async function calificarExamen(materia, moduloIndex, moduloNombre) {
                     <button id="cerrarExamenBtn" class="btn btn-primary" style="margin-top: 20px;">Cerrar</button>
                 </div>
             `;
-            let tokensGanados = 0;
-            if (aciertos === 5) tokensGanados = 15;
-            else if (aciertos === 4) tokensGanados = 10;
-            else if (aciertos === 3) tokensGanados = 6;
-            
-            if (tokensGanados > 0) {
-                await otorgarTokens(tokensGanados, `Examen ${moduloNombre} (${aciertos}/5 correctas)`);
-            }
             
             document.getElementById('cerrarExamenBtn')?.addEventListener('click', () => {
                 modal.style.display = 'none';
@@ -1625,41 +1252,24 @@ async function calificarExamen(materia, moduloIndex, moduloNombre) {
     }
 }
 
-
 async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
     const materia = currentUser.materias.find(m => m.id === materiaId);
     if (!materia) throw new Error('Materia no encontrada');
     
-<<<<<<< HEAD
-    const moduloKey = `${materiaId}_${moduloIndex}`;
-    
-    // Verificar si ya está completado
-    if (modulosCompletadosMap.get(moduloKey) === true) {
+    // Verificar si el módulo ya está completado (modo acumulativo)
+    if (moduloIndex < (materia.modulosCompletados || 0)) {
         console.log(`⚠️ Módulo ${moduloNombre} ya estaba completado`);
         return;
     }
     
-    console.log(`📝 Completando módulo independiente: ${moduloNombre} (${moduloKey})`);
+    const nuevosCompletados = (materia.modulosCompletados || 0) + 1;
+    const nuevoProgreso = Math.round((nuevosCompletados / materia.totalModulos) * 100);
     
-=======
-    const completedIndexes = Array.isArray(materia.completedModuleIndexes) ? [...materia.completedModuleIndexes] : [];
-    if (completedIndexes.includes(moduloIndex)) {
-        return;
-    }
-
->>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
+    console.log(`📊 Actualizando progreso: ${materia.modulosCompletados} → ${nuevosCompletados}, Progreso: ${nuevoProgreso}%`);
+    
     try {
-        const result = await API.apiUpdateModuleProgress(materiaId, moduloIndex);
+        const token = localStorage.getItem('adaptatec_token');
         
-<<<<<<< HEAD
-        // Guardar en localStorage localmente
-        guardarModuloCompletadoLocal(materiaId, moduloIndex);
-        
-        // Calcular nuevo progreso de la materia (solo módulos completados reales)
-        const nuevosCompletados = calcularModulosCompletadosMateria(materiaId);
-        const nuevoProgreso = Math.round((nuevosCompletados / materia.totalModulos) * 100);
-        
-        // Actualizar en el backend
         const response = await fetch(`/api/users/progress/${materiaId}`, {
             method: 'PUT',
             headers: {
@@ -1681,149 +1291,31 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
         materia.progress = nuevoProgreso;
         
         // Registrar actividad
-=======
-        materia.completedModuleIndexes = Array.from(new Set([...(materia.completedModuleIndexes || []), moduloIndex])).sort((a, b) => a - b);
-        materia.modulosCompletados = result.modulosCompletados ?? getMateriaCompletedCount(materia);
-        materia.progress = result.progress ?? Math.round((materia.modulosCompletados / materia.totalModulos) * 100);
-
->>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
         await fetch('/api/users/activity', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('adaptatec_token')}`
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
                 descripcion: `🎉 ¡Completaste el módulo "${moduloNombre}" en ${materia.name}!`,
                 tipo: 'modulo'
             })
         });
-<<<<<<< HEAD
         
-        // Actualizar estadísticas
+        // Actualizar estadísticas generales
         calcularEstadisticasGenerales();
         
-        // Recargar la vista de módulos para mostrar el cambio
+        // Recargar la vista de módulos
         abrirModulosMateria(materiaId, false);
         
-        console.log(`✅ Módulo "${moduloNombre}" completado exitosamente`);
+        console.log(`✅ Módulo "${moduloNombre}" completado. Progreso de materia: ${nuevoProgreso}%`);
         
-=======
-
-        calcularEstadisticasGenerales();
-
-        console.log(`✅ Módulo "${moduloNombre}" completado. Progreso de materia: ${materia.progress}%`);
->>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
     } catch (error) {
         console.error('Error al marcar módulo completado:', error);
         throw error;
     }
 }
-
-// ========== SISTEMA DE RECOMPENSAS Y TOKENS ==========
-
-
-
-/**
- * Cargar recompensas ya obtenidas desde el backend
- */
-async function cargarRecompensasObtenidas() {
-    try {
-        const user = await API.apiGetProfile();
-        if (user.recompensas_obtenidas) {
-            recompensasObtenidas = new Set(JSON.parse(user.recompensas_obtenidas));
-        }
-    } catch (error) {
-        console.error('Error cargando recompensas:', error);
-    }
-}
-
-/**
- * Otorgar tokens al usuario
- */
-async function otorgarTokens(cantidad, motivo) {
-    try {
-        const token = localStorage.getItem('adaptatec_token');
-        const response = await fetch('/api/users/tokens', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ cantidad, motivo })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log(`🎁 +${cantidad} tokens por: ${motivo}`);
-            if (currentUser) {
-                currentUser.tokens = data.tokensTotales;
-            }
-            return true;
-        }
-    } catch (error) {
-        console.error('Error otorgando tokens:', error);
-    }
-    return false;
-}
-
-/**
- * Otorgar recompensa por primera vez
- */
-async function otorgarRecompensa(nombre, tokens, condicion) {
-    if (recompensasObtenidas.has(nombre)) return false;
-    
-    if (condicion()) {
-        recompensasObtenidas.add(nombre);
-        await otorgarTokens(tokens, `Recompensa: ${nombre}`);
-        
-        // Guardar en BD
-        const token = localStorage.getItem('adaptatec_token');
-        await fetch('/api/users/recompensa', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ nombre, tokens })
-        });
-        
-        // Mostrar notificación
-        mostrarNotificacion(`🏆 ¡Nueva recompensa! ${nombre}\n🎁 +${tokens} tokens`);
-        return true;
-    }
-    return false;
-}
-
-/**
- * Mostrar notificación
- */
-function mostrarNotificacion(mensaje) {
-    // Crear elemento de notificación
-    const notificacion = document.createElement('div');
-    notificacion.className = 'notificacion-recompensa';
-    notificacion.innerHTML = mensaje;
-    notificacion.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, #f59e0b, #f97316);
-        color: white;
-        padding: 12px 24px;
-        border-radius: 50px;
-        font-weight: bold;
-        z-index: 3000;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        animation: slideUp 0.3s ease;
-    `;
-    document.body.appendChild(notificacion);
-    
-    setTimeout(() => {
-        notificacion.remove();
-    }, 4000);
-}
-
 
 // ========== GEMINI CONFIGURATION LISTENERS ==========
 // Configuración de Gemini ahora se maneja en el backend

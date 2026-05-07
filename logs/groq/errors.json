@@ -186,53 +186,5 @@
     "materia": 3,
     "responseTime": 1022,
     "statusCode": 200
-  },
-  {
-    "timestamp": "2026-05-06T20:53:56.624Z",
-    "type": "SUCCESS",
-    "pregunta": "hola",
-    "materia": 2,
-    "responseTime": 801,
-    "statusCode": 200
-  },
-  {
-    "timestamp": "2026-05-06T20:54:04.004Z",
-    "type": "SUCCESS",
-    "pregunta": "como estas?",
-    "materia": 2,
-    "responseTime": 586,
-    "statusCode": 200
-  },
-  {
-    "timestamp": "2026-05-06T20:54:15.556Z",
-    "type": "SUCCESS",
-    "pregunta": "ubicas sauces?",
-    "materia": 2,
-    "responseTime": 734,
-    "statusCode": 200
-  },
-  {
-    "timestamp": "2026-05-06T20:54:36.139Z",
-    "type": "SUCCESS",
-    "pregunta": "la colonia sauces en el estado de mexico",
-    "materia": 2,
-    "responseTime": 921,
-    "statusCode": 200
-  },
-  {
-    "timestamp": "2026-05-07T04:13:49.644Z",
-    "type": "SUCCESS",
-    "pregunta": "hola",
-    "materia": 3,
-    "responseTime": 373,
-    "statusCode": 200
-  },
-  {
-    "timestamp": "2026-05-07T04:13:56.636Z",
-    "type": "SUCCESS",
-    "pregunta": "que es una base de datos",
-    "materia": 3,
-    "responseTime": 942,
-    "statusCode": 200
   }
 ]

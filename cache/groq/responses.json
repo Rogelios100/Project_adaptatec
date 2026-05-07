@@ -89,47 +89,5 @@
     "materia": 3,
     "respuesta": "Excelente pregunta, estudiante.\n\nEn bases de datos, el operador `ALL` es una función de agregación que permite comparar un valor con todos los valores de una columna o expresión en una tabla.\n\n**Sintaxis:**\n\n`SELECT columna FROM tabla WHERE columna OPERADOR ALL (SELECT columna FROM tabla2);`\n\n**Funcionamiento:**\n\nEl operador `ALL` devuelve `TRUE` si el valor de la columna o expresión en la consulta principal es mayor que o igual a todos los valores en la columna o expresión en la consulta secundaria.\n\n**Ejemplos:**\n\n1. **Buscar empleados con salario mayor que el salario promedio de todos los empleados:**\n\n`SELECT * FROM empleados WHERE salario > ALL (SELECT AVG(salario) FROM empleados);`\n\nEn este ejemplo, la consulta secundaria calcula el salario promedio de todos los empleados. La consulta principal busca empleados con salario mayor que el salario promedio.\n\n2. **Buscar departamentos con presupuesto mayor que el presupuesto de todos los departamentos:**\n\n`SELECT * FROM departamentos WHERE presupuesto > ALL (SELECT presupuesto FROM departamentos);`\n\nEn este ejemplo, la consulta secundaria devuelve todos los presupuestos de los departamentos. La consulta principal busca departamentos con presupuesto mayor que el presupuesto de todos los departamentos.\n\n**Conclusión:**\n\nEl operador `ALL` es una herramienta útil en bases de datos para realizar comparaciones con todos los valores de una columna o expresión. Espero que esto aclare la duda del estudiante.",
     "timestamp": 1778092101778
-  },
-  {
-    "key": "aG9sYXwy",
-    "pregunta": "hola",
-    "materia": 2,
-    "respuesta": "¡Hola! Me alegra verte en el entorno de aprendizaje del TECNM para Ingeniería en Sistemas. ¿En qué puedo ayudarte hoy? ¿Tienes alguna pregunta sobre la materia, necesitas ayuda con un ejercicio o simplemente quieres discutir un tema relacionado con la ingeniería en sistemas? Estoy aquí para apoyarte.",
-    "timestamp": 1778100836623
-  },
-  {
-    "key": "Y29tbyBlc3Rhcz98Mg==",
-    "pregunta": "como estas?",
-    "materia": 2,
-    "respuesta": "Estoy bien, gracias por preguntar. ¿En qué puedo ayudarte con la materia de Ingeniería en Sistemas? ¿Tienes alguna duda o necesitas ayuda con un tema en particular?",
-    "timestamp": 1778100844003
-  },
-  {
-    "key": "dWJpY2FzIHNhdWNlcz98Mg==",
-    "pregunta": "ubicas sauces?",
-    "materia": 2,
-    "respuesta": "Lo siento, pero no puedo comprender tu pregunta. ¿Podrías proporcionar más contexto o detalles sobre \"ubicas sauces\"? ¿Te refieres a un concepto específico en la materia de Ingeniería en Sistemas o quizás a una ubicación geográfica?",
-    "timestamp": 1778100855555
-  },
-  {
-    "key": "bGEgY29sb25pYSBzYXVjZXMgZW4gZWwgZXN0YWRvIGRlIG1leGljb3wy",
-    "pregunta": "la colonia sauces en el estado de mexico",
-    "materia": 2,
-    "respuesta": "La colonia Sauces es un lugar geográfico ubicado en el estado de México, México. Aunque no tengo información específica sobre la colonia Sauces, puedo sugerirte algunas fuentes para que puedas obtener más información.\n\n* La Enciclopedia de los Municipios y Delegaciones de México es una fuente confiable que proporciona información sobre municipios y delegaciones de todo el país, incluyendo su geografía, historia y características.\n* El sitio web del gobierno del estado de México también ofrece información sobre municipios y localidades, incluyendo datos sobre colonias y lugares de interés.\n* Si estás buscando información específica sobre la colonia Sauces, como su ubicación, población o servicios disponibles, te recomiendo buscar en sitios web de directorios o mapas en línea, como Google Maps o Wikipedia.\n\nRecuerda que, como estudiante de Ingeniería en Sistemas, es importante desarrollar habilidades de investigación y análisis de información. Por lo tanto, te animo a investigar y encontrar la información que estás buscando.\n\n¿Necesitas ayuda para encontrar más fuentes de información o para analizar los datos que encuentres?",
-    "timestamp": 1778100876138
-  },
-  {
-    "key": "aG9sYXwz",
-    "pregunta": "hola",
-    "materia": 3,
-    "respuesta": "¡Hola! ¿En qué puedo ayudarte en este momento? ¿Tienes alguna pregunta o necesitas ayuda con algún tema específico de la materia de Ingeniería en Sistemas? ¿Estás trabajando en algún ejercicio o proyecto y necesitas orientación? Estoy aquí para ayudarte.",
-    "timestamp": 1778127229643
-  },
-  {
-    "key": "cXVlIGVzIHVuYSBiYXNlIGRlIGRhdG9zfDM=",
-    "pregunta": "que es una base de datos",
-    "materia": 3,
-    "respuesta": "Excelente pregunta, estudiante. Una base de datos (BD) es un conjunto organizado de datos almacenados de manera sistemática y estructurada para ser consultados, actualizados y eliminados de manera eficiente. Las bases de datos se utilizan para almacenar, gestionar y recuperar información en un sistema de información.\n\nImagina que tienes una librería con millones de libros. Cada libro tiene un título, autor, fecha de publicación, etc. Si no tienes una forma organizada de almacenar y recuperar esta información, sería muy difícil encontrar un libro específico. Una base de datos es como un catálogo que te permite almacenar y recuperar esta información de manera eficiente.\n\nLas bases de datos pueden ser clasificadas en diferentes tipos, como:\n\n* **Bases de datos relacionales (RDBMS)**: Almacenan datos en tablas relacionadas entre sí. Ejemplo: una base de datos de una tienda que almacena información de clientes, productos y ventas.\n* **Bases de datos no relacionales (NoSQL)**: Almacenan datos de manera no estructurada y no utilizan tablas. Ejemplo: una base de datos de redes sociales que almacena información de usuarios y sus conexiones.\n\nAlgunos de los conceptos básicos de una base de datos incluyen:\n\n* **Tupla**: Un conjunto de valores que representan una fila en una tabla.\n* **Atributo**: Una columna en una tabla que almacena un tipo de información específica.\n* **Relación**: La conexión entre dos o más tablas.\n* **Índice**: Un mecanismo que permite buscar y recuperar datos de manera rápida.\n\nEn la práctica, las bases de datos se utilizan en una variedad de aplicaciones, como:\n\n* Sistemas de gestión de bases de datos (SGBD) como MySQL, PostgreSQL o Microsoft SQL Server.\n* Aplicaciones web como Facebook, Twitter o Instagram.\n* Sistemas de gestión de información como Google Analytics o Salesforce.\n\nEspero que esta explicación te haya ayudado a entender qué es una base de datos. ¿Tienes alguna pregunta adicional?",
-    "timestamp": 1778127236636
   }
 ]
