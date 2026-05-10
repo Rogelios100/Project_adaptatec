@@ -336,7 +336,6 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
     
     currentMateriaId = materiaId;
     const modulos = modulosPorMateria[materiaId] || [`Módulo 1`, `Módulo 2`, `Módulo 3`];
-<<<<<<< HEAD
     
     // Cargar módulos completados desde localStorage Y BD
     await cargarModulosCompletadosLocal(materiaId);
@@ -358,20 +357,6 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
     if (container) {
         container.innerHTML = modulos.map((modulo, index) => {
             const estaCompletado = modulosCompletadosMap.get(`${materiaId}_${index}`) === true;
-=======
-    const completados = getMateriaCompletedCount(materia);
-    const completedSet = new Set(materia.completedModuleIndexes || []);
-
-    const titleEl = document.getElementById('modulosMateriaTitle');
-    const descEl = document.getElementById('modulosMateriaDesc');
-    if (titleEl) titleEl.innerText = materia.name;
-    if (descEl) descEl.innerHTML = `Progreso: ${materia.progress}% completado | Módulos completados: ${completados}/${materia.totalModulos}`;
-
-    const container = document.getElementById('modulosGrid');
-    if (container) {
-        container.innerHTML = modulos.map((modulo, index) => {
-            const estaCompletado = completedSet.has(index);
->>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
             return `
                 <div class="modulo-card ${estaCompletado ? 'completado' : 'pendiente'}" data-modulo-index="${index}" data-materia-id="${materiaId}">
                     <div class="modulo-info">
@@ -404,10 +389,9 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
     document.querySelectorAll('.btn-ver-modulo').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const modulo = btn.dataset.modulo;
             const index = parseInt(btn.dataset.index);
             const materiaIdLocal = parseInt(btn.dataset.materiaId);
-            verContenidoModulo(materiaIdLocal, index, modulo);
+            verContenidoModulo(materiaIdLocal, index, btn.dataset.modulo);
         });
     });
     
@@ -415,14 +399,13 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
     document.querySelectorAll('.btn-examen-modulo').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const modulo = btn.dataset.modulo;
             const index = parseInt(btn.dataset.index);
             const materiaIdLocal = parseInt(btn.dataset.materiaId);
-            iniciarExamen(materia, index, modulo);
+            iniciarExamen(materia, index, btn.dataset.modulo);
         });
     });
     
-    // Clik en la tarjeta del módulo (ver contenido)
+    // Click en la tarjeta del módulo (ver contenido)
     document.querySelectorAll('.modulo-card').forEach(card => {
         card.addEventListener('click', (e) => {
             if (e.target.classList.contains('btn-ver-modulo') || e.target.classList.contains('btn-examen-modulo')) return;
@@ -449,7 +432,6 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
         }, 300);
     }
 }
-
 
 function abrirChatConContexto(materiaName) {
     const chatModal = document.getElementById('chatModal');
@@ -1630,7 +1612,6 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
     const materia = currentUser.materias.find(m => m.id === materiaId);
     if (!materia) throw new Error('Materia no encontrada');
     
-<<<<<<< HEAD
     const moduloKey = `${materiaId}_${moduloIndex}`;
     
     // Verificar si ya está completado
@@ -1639,28 +1620,48 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
         return;
     }
     
-    console.log(`📝 Completando módulo independiente: ${moduloNombre} (${moduloKey})`);
+    console.log(`📝 Completando módulo: ${moduloNombre} (${moduloKey})`);
     
-=======
-    const completedIndexes = Array.isArray(materia.completedModuleIndexes) ? [...materia.completedModuleIndexes] : [];
-    if (completedIndexes.includes(moduloIndex)) {
-        return;
-    }
-
->>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
+    // Obtener token
+    const token = localStorage.getItem('adaptatec_token');
+    
     try {
-        const result = await API.apiUpdateModuleProgress(materiaId, moduloIndex);
+        // 1. Guardar en backend primero
+        const response = await fetch('/api/users/modulo-completado', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                materiaId: materiaId,
+                moduloId: moduloIndex,
+                moduloNombre: moduloNombre
+            })
+        });
         
-<<<<<<< HEAD
-        // Guardar en localStorage localmente
-        guardarModuloCompletadoLocal(materiaId, moduloIndex);
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
         
-        // Calcular nuevo progreso de la materia (solo módulos completados reales)
+        // 2. Guardar en localStorage
+        const key = `modulos_completados_${materiaId}`;
+        const saved = localStorage.getItem(key);
+        let completados = saved ? JSON.parse(saved) : [];
+        if (!completados.includes(moduloIndex)) {
+            completados.push(moduloIndex);
+            localStorage.setItem(key, JSON.stringify(completados));
+        }
+        
+        // 3. Actualizar Map
+        modulosCompletadosMap.set(moduloKey, true);
+        
+        // 4. Calcular nuevo progreso
         const nuevosCompletados = calcularModulosCompletadosMateria(materiaId);
         const nuevoProgreso = Math.round((nuevosCompletados / materia.totalModulos) * 100);
         
-        // Actualizar en el backend
-        const response = await fetch(`/api/users/progress/${materiaId}`, {
+        // 5. Actualizar progreso en backend
+        const progressResponse = await fetch(`/api/users/progress/${materiaId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -1672,48 +1673,32 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
             })
         });
         
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
+        if (!progressResponse.ok) {
+            console.warn('No se pudo actualizar el progreso:', await progressResponse.text());
         }
         
-        // Actualizar localmente
+        // 6. Actualizar localmente
         materia.modulosCompletados = nuevosCompletados;
         materia.progress = nuevoProgreso;
         
-        // Registrar actividad
-=======
-        materia.completedModuleIndexes = Array.from(new Set([...(materia.completedModuleIndexes || []), moduloIndex])).sort((a, b) => a - b);
-        materia.modulosCompletados = result.modulosCompletados ?? getMateriaCompletedCount(materia);
-        materia.progress = result.progress ?? Math.round((materia.modulosCompletados / materia.totalModulos) * 100);
-
->>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
+        // 7. Registrar actividad
         await fetch('/api/users/activity', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('adaptatec_token')}`
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
                 descripcion: `🎉 ¡Completaste el módulo "${moduloNombre}" en ${materia.name}!`,
                 tipo: 'modulo'
             })
-        });
-<<<<<<< HEAD
+        }).catch(e => console.warn('Error registrando actividad:', e));
         
-        // Actualizar estadísticas
+        // 8. Actualizar estadísticas
         calcularEstadisticasGenerales();
         
-        // Recargar la vista de módulos para mostrar el cambio
-        abrirModulosMateria(materiaId, false);
+        console.log(`✅ Módulo "${moduloNombre}" completado exitosamente. Progreso: ${materia.progress}%`);
         
-        console.log(`✅ Módulo "${moduloNombre}" completado exitosamente`);
-        
-=======
-
-        calcularEstadisticasGenerales();
-
-        console.log(`✅ Módulo "${moduloNombre}" completado. Progreso de materia: ${materia.progress}%`);
->>>>>>> bf19377d535acda62117eb6d97550b9ea830d491
     } catch (error) {
         console.error('Error al marcar módulo completado:', error);
         throw error;
