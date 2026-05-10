@@ -256,3 +256,58 @@ export async function apiGroqQuestion(pregunta, materia = '', contexto = '') {
 
 // Alias para compatibilidad con código antiguo
 export const apiGeminiQuestion = apiGroqQuestion;
+
+// ========== HEARTBEAT Y TIEMPO DE ESTUDIO ==========
+
+/**
+ * Enviar heartbeat con tiempo de estudio
+ * @param {number} segundos - Segundos estudiados en este periodo
+ * @param {string} materiaId - ID de la materia actual
+ * @param {string} moduloId - ID del módulo actual (opcional)
+ */
+export async function apiSendHeartbeat(segundos, materiaId = null, moduloId = null) {
+    try {
+        const response = await fetch(`${API_BASE}/users/heartbeat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeader()
+            },
+            body: JSON.stringify({
+                segundos,
+                materiaId,
+                moduloId,
+                timestamp: new Date().toISOString()
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al enviar heartbeat');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error en heartbeat:', error);
+        return null;
+    }
+}
+
+/**
+ * Obtener estadísticas de tiempo de estudio
+ */
+export async function apiGetTiempoEstudio() {
+    try {
+        const response = await fetch(`${API_BASE}/users/tiempo-estudio`, {
+            headers: getAuthHeader()
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al obtener tiempo de estudio');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error:', error);
+        return null;
+    }
+}

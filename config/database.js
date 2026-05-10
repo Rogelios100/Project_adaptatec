@@ -44,7 +44,7 @@ export async function initializeDatabase() {
 }
 
 async function createTables() {
-  // 1. Tabla de usuarios (mejorada)
+  // 1. Tabla de usuarios (mejorada con tokens)
   await run(`
     CREATE TABLE IF NOT EXISTS users (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -59,6 +59,8 @@ async function createTables() {
       logros INT DEFAULT 0,
       totalLogros INT DEFAULT 24,
       horas INT DEFAULT 0,
+      tokens INT DEFAULT 0,
+      recompensas_obtenidas TEXT DEFAULT NULL,
       ultimo_acceso DATETIME DEFAULT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -156,13 +158,14 @@ async function createTables() {
   await run(`
     CREATE TABLE IF NOT EXISTS modulo_progress (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      userProgressId INT NOT NULL,
+      userId INT NOT NULL,
+      materiaId INT NOT NULL,
       moduloId INT NOT NULL,
       completado BOOLEAN DEFAULT FALSE,
       fecha_completado DATETIME DEFAULT NULL,
-      UNIQUE KEY uq_modulo_progress (userProgressId, moduloId),
-      FOREIGN KEY (userProgressId) REFERENCES user_progress(id) ON DELETE CASCADE ON UPDATE CASCADE,
-      FOREIGN KEY (moduloId) REFERENCES modulos(id) ON DELETE CASCADE ON UPDATE CASCADE
+      UNIQUE KEY uq_user_materia_modulo (userId, materiaId, moduloId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (materiaId) REFERENCES materias(id) ON DELETE CASCADE ON UPDATE CASCADE
     ) ENGINE=InnoDB;
   `);
 
@@ -224,7 +227,7 @@ async function createTables() {
     ) ENGINE=InnoDB;
   `);
 
-  // 12. Tabla de recompensas
+  // 12. Tabla de recompensas (logros automáticos)
   await run(`
     CREATE TABLE IF NOT EXISTS rewards (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -240,7 +243,7 @@ async function createTables() {
     ) ENGINE=InnoDB;
   `);
 
-  // 13. Tabla de recompensas por usuario
+  // 13. Tabla de recompensas por usuario (logros obtenidos)
   await run(`
     CREATE TABLE IF NOT EXISTS user_rewards (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -252,12 +255,42 @@ async function createTables() {
       FOREIGN KEY (rewardId) REFERENCES rewards(id) ON DELETE CASCADE ON UPDATE CASCADE
     ) ENGINE=InnoDB;
   `);
+
+  // ========== NUEVAS TABLAS PARA RECOMPENSAS CANJEABLES ==========
+
+  // 14. Tabla de recompensas canjeables (tienda)
+  await run(`
+    CREATE TABLE IF NOT EXISTS recompensas_canjeables (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(100) NOT NULL,
+      descripcion TEXT,
+      tokens_necesarios INT NOT NULL,
+      beneficio VARCHAR(100),
+      activo BOOLEAN DEFAULT TRUE,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB;
+  `);
+
+  // 15. Tabla de canjes realizados por usuarios
+  await run(`
+    CREATE TABLE IF NOT EXISTS canjes_usuario (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      userId INT NOT NULL,
+      recompensaId INT NOT NULL,
+      fecha_canje DATETIME DEFAULT CURRENT_TIMESTAMP,
+      estado ENUM('pendiente', 'entregado', 'usado') DEFAULT 'pendiente',
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (recompensaId) REFERENCES recompensas_canjeables(id) ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
 }
 
 async function insertDefaultData() {
   await insertDefaultMaterias();
   await insertDefaultModulos();
   await insertDefaultObjectivesAndRewards();
+  await insertDefaultRecompensasCanjeables();
   await insertAdminUser();
   await insertDemoAlumno();
   await insertDemoProgress();
@@ -279,7 +312,6 @@ async function insertDefaultMaterias() {
 }
 
 async function insertDefaultModulos() {
-  // Obtener IDs de materias
   const materias = await all('SELECT id, nombre FROM materias');
   const materiaMap = {};
   materias.forEach(m => materiaMap[m.nombre] = m.id);
@@ -344,15 +376,28 @@ async function insertDefaultObjectivesAndRewards() {
   }
 }
 
+async function insertDefaultRecompensasCanjeables() {
+  const canjeablesExistentes = await all('SELECT COUNT(*) as count FROM recompensas_canjeables');
+  if (canjeablesExistentes[0].count > 0) return;
+
+  await run(`
+    INSERT INTO recompensas_canjeables (nombre, descripcion, tokens_necesarios, beneficio, activo) VALUES
+    ('🎓 Crédito complementario', 'Certificado de crédito académico válido para 1 materia complementaria', 10000, 'credito_academico', TRUE),
+    ('💰 Decimo', 'Pago único del decimo (10% de un periodo escolar)', 500, 'decimo', TRUE),
+    ('🏷️ Descuento 15%', '15% de descuento en la tienda escolar', 500, 'descuento_tienda', TRUE)
+  `);
+  console.log('✅ Recompensas canjeables insertadas');
+}
+
 async function insertAdminUser() {
   const existingAdmin = await get('SELECT id FROM users WHERE role = ? LIMIT 1', ['admin']);
   if (existingAdmin) return;
 
   const hashedPassword = bcrypt.hashSync('123', 10);
   await run(
-    `INSERT INTO users (matricula, username, password, email, name, role, nivel, puntos, logros, horas) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['ADMIN-0001', 'ADMIN001', hashedPassword, 'admin@adaptatec.com', 'Admin Global', 'admin', 1, 0, 0, 0]
+    `INSERT INTO users (matricula, username, password, email, name, role, nivel, puntos, logros, horas, tokens) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ['ADMIN-0001', 'ADMIN001', hashedPassword, 'admin@adaptatec.com', 'Admin Global', 'admin', 1, 0, 0, 0, 0]
   );
   console.log('✅ Usuario administrador creado');
 }
@@ -366,9 +411,9 @@ async function insertDemoAlumno() {
 
   const hashedPassword = bcrypt.hashSync('123', 10);
   const result = await run(
-    `INSERT INTO users (matricula, username, password, email, name, role, nivel, puntos, logros, horas) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['ALU-001', 'ALU001', hashedPassword, 'juan.perez@universidad.edu', 'Juan David Pérez', 'alumno', 5, 75, 3, 23]
+    `INSERT INTO users (matricula, username, password, email, name, role, nivel, puntos, logros, horas, tokens) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ['ALU-001', 'ALU001', hashedPassword, 'juan.perez@universidad.edu', 'Juan David Pérez', 'alumno', 5, 75, 3, 23, 0]
   );
 
   // Inscribir al alumno en todas las materias
