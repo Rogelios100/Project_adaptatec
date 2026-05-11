@@ -195,11 +195,6 @@ CREATE TABLE IF NOT EXISTS canjes_usuario (
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Solo usuario administrador de prueba
-INSERT IGNORE INTO users (matricula, username, password, email, name, role, nivel, puntos, logros, horas, tokens)
-VALUES
-  ('ADMIN-0001', 'ADMIN001', '2026', 'admin@adaptatec.com', 'Admin Global', 'admin', 1, 0, 0, 0, 0);
-
 -- Objetivos de ejemplo
 INSERT IGNORE INTO objectives (clave, nombre, descripcion, tipo, objetivo, unidad, puntos) VALUES
   ('primer_curso', 'Completa tu primera materia', 'Alcanza 100% en al menos una materia.', 'materia', 100, 'percent', 10),

@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { run, get } from '../config/database.js';
+import { verifyToken, verifyRole } from '../middleware/auth.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'adaptatec_default_secret';
 const router = express.Router();
@@ -31,16 +32,17 @@ router.post('/register', async (req, res) => {
 
     // Hashear contraseña
     const hashedPassword = bcrypt.hashSync(password, 10);
+    const newRole = 'alumno';
 
-    // Crear usuario
+    // Crear usuario siempre como alumno en registro público
     const result = await run(
       'INSERT INTO users (username, matricula, password, email, name, role) VALUES (?, ?, ?, ?, ?, ?)',
-      [username, matricula, hashedPassword, email, name || username, role || 'alumno']
+      [username, matricula, hashedPassword, email, name || username, newRole]
     );
 
     // Generar token
     const token = jwt.sign(
-      { id: result.id, username, matricula, role: role || 'alumno' },
+      { id: result.id, username, matricula, role: newRole },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -48,11 +50,50 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       message: 'Usuario registrado exitosamente',
       token,
-      user: { id: result.id, username, matricula, email, name, role: role || 'alumno' }
+      user: { id: result.id, username, matricula, email, name, role: newRole }
     });
   } catch (error) {
     console.error('Error en registro:', error);
     res.status(500).json({ error: 'Error al registrar usuario' });
+  }
+});
+
+// REGISTRAR USUARIO/ADMIN (solo admin puede crear roles especiales)
+router.post('/register-admin', verifyToken, verifyRole(['admin']), async (req, res) => {
+  try {
+    const { username, matricula, email, password, name, role } = req.body;
+
+    if (!username || !matricula || !email || !password) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+
+    if (password.length < 7) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 7 caracteres' });
+    }
+
+    const existingUser = await get(
+      'SELECT id FROM users WHERE username = ? OR email = ? OR matricula = ?',
+      [username, email, matricula]
+    );
+    if (existingUser) {
+      return res.status(409).json({ error: 'El usuario, email o matrícula ya existe' });
+    }
+
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const newRole = role || 'admin';
+
+    const result = await run(
+      'INSERT INTO users (username, matricula, password, email, name, role) VALUES (?, ?, ?, ?, ?, ?)',
+      [username, matricula, hashedPassword, email, name || username, newRole]
+    );
+
+    res.status(201).json({
+      message: 'Usuario creado por admin exitosamente',
+      user: { id: result.id, username, matricula, email, name, role: newRole }
+    });
+  } catch (error) {
+    console.error('Error en register-admin:', error);
+    res.status(500).json({ error: 'Error al registrar usuario como admin' });
   }
 });
 

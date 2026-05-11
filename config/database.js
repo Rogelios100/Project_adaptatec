@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_PORT = Number(process.env.DB_PORT || 3306);
 const DB_USER = process.env.DB_USER || 'root';
-const DB_PASSWORD = process.env.DB_PASSWORD || '';
+const DB_PASSWORD = process.env.DB_PASSWORD || 'Roadsan10';
 const DB_DATABASE = process.env.DB_DATABASE || 'adaptatec';
 
 let pool = null;
@@ -53,7 +53,7 @@ async function createTables() {
       password VARCHAR(255) NOT NULL,
       email VARCHAR(150) UNIQUE NOT NULL,
       name VARCHAR(150) NOT NULL,
-      role ENUM('alumno', 'docente', 'admin') NOT NULL DEFAULT 'alumno',
+      role ENUM('alumno', 'admin') NOT NULL DEFAULT 'alumno',
       nivel INT DEFAULT 1,
       puntos INT DEFAULT 0,
       logros INT DEFAULT 0,

@@ -957,8 +957,8 @@ async function handleAdminRegisterSubmit(e) {
     try {
         const token = localStorage.getItem('adaptatec_token');
         
-        // CAMBIAR: usar /api/auth/register en lugar de /api/users/register
-        const response = await fetch('/api/auth/register', {
+        // Usar el endpoint seguro de admin
+        const response = await fetch('/api/auth/register-admin', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -968,7 +968,7 @@ async function handleAdminRegisterSubmit(e) {
                 username: username,
                 password: password,
                 email: email,
-                nombre: nombre,
+                name: nombre,
                 matricula: matricula,
                 role: rol
             })
