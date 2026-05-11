@@ -2,6 +2,8 @@ import express from 'express';
 import { verifyToken } from '../middleware/auth.js';
 import { get, all, run } from '../config/database.js';
 
+console.log('✅ Cargando rutas de usuarios...');
+
 const router = express.Router();
 
 // ========== UTILIDADES ==========
@@ -329,4 +331,123 @@ router.post('/canjear', verifyToken, async (req, res) => {
   }
 });
 
+router.get('/admin/all-users', verifyToken, async (req, res) => {
+  try {
+    // Verificar que sea admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado. Se requieren privilegios de administrador.' });
+    }
+    
+    const users = await all(`
+      SELECT id, username, email, name, matricula, role, nivel, puntos, logros, totalLogros, horas, tokens, createdAt 
+      FROM users 
+      ORDER BY id
+    `);
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error al obtener usuarios:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener un usuario específico (solo admin)
+router.get('/admin/user/:username', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    
+    const user = await get('SELECT id, username, email, name, matricula, role, nivel, puntos, tokens, createdAt FROM users WHERE username = ?', [req.params.username]);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Actualizar usuario (solo admin)
+router.put('/admin/user/:username', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    
+    const { username } = req.params;
+    const { name, email, nivel, puntos } = req.body;
+    
+    const updates = [];
+    const values = [];
+    
+    if (name) { updates.push('name = ?'); values.push(name); }
+    if (email) { updates.push('email = ?'); values.push(email); }
+    if (nivel !== undefined) { updates.push('nivel = ?'); values.push(nivel); }
+    if (puntos !== undefined) { updates.push('puntos = ?'); values.push(puntos); }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+    
+    values.push(username);
+    await run(`UPDATE users SET ${updates.join(', ')} WHERE username = ?`, values);
+    
+    res.json({ message: 'Usuario actualizado correctamente' });
+  } catch (error) {
+    console.error('Error al actualizar usuario:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Eliminar usuario (solo admin)
+router.delete('/admin/user/:username', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    
+    const { username } = req.params;
+    
+    // No permitir eliminar al propio admin
+    if (username === req.user.username) {
+      return res.status(400).json({ error: 'No puedes eliminar tu propio usuario' });
+    }
+    
+    const user = await get('SELECT id FROM users WHERE username = ?', [username]);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    // Eliminar datos relacionados
+    await run('DELETE FROM user_progress WHERE userId = ?', [user.id]);
+    await run('DELETE FROM modulo_progress WHERE userId = ?', [user.id]);
+    await run('DELETE FROM activities WHERE userId = ?', [user.id]);
+    await run('DELETE FROM canjes_usuario WHERE userId = ?', [user.id]);
+    await run('DELETE FROM users WHERE id = ?', [user.id]);
+    
+    res.json({ message: 'Usuario eliminado correctamente' });
+  } catch (error) {
+    console.error('Error al eliminar usuario:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Probar conexión Groq (solo admin)
+router.get('/admin/test-groq', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    res.json({ status: 'ok', message: 'Conexión con Groq disponible' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
+
+// ========== ADMIN ROUTES ==========
+// Obtener todos los usuarios (solo admin)

@@ -1171,3 +1171,78 @@ body {
 .close-btn:hover {
     color: #ef4444;
 }
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.badge.warning {
+    background-color: #f59e0b;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
+.badge.danger {
+    background-color: #ef4444;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
+.menu-section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+    padding: 0.5rem 1rem 0.3rem;
+    font-weight: 600;
+}
+
+.admin-menu-section, .student-menu-section {
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.dashboard-card .card-number {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #3b82f6;
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+

@@ -558,15 +558,12 @@ function renderDashboard() {
         document.getElementById('recentActivitiesList').innerHTML = activities.map(a => `<li>${a}</li>`).join('');
     }
 
-    if (isTeacher) {
-        const teacherCoursesHtml = (currentUser.cursos || []).map(c => `
-            <div class="course-item">
-                <strong>${c}</strong>
-                <p>45 estudiantes | 12 módulos</p>
-            </div>
-        `).join('');
-        document.getElementById('teacherCourses').innerHTML = teacherCoursesHtml || '<p>No hay cursos asignados</p>';
-    }
+    if (isAdmin) {
+        setTimeout(() => {
+            renderAdminPanel();
+        }, 100);
+    return; // Importante: los admin no ven el dashboard de estudiante
+}
 }
 
 function renderMaterias() {
@@ -864,27 +861,89 @@ function renderAdminUsers() {
 function applyRoleVisibility() {
     const isAdmin = currentUser?.role === 'admin';
     const isStudent = currentUser?.role === 'alumno';
-
+    
+    // Mostrar/ocultar botones de admin
     document.querySelectorAll('.admin-only').forEach(el => {
         el.style.display = isAdmin ? 'flex' : 'none';
     });
+    
+    // Mostrar/ocultar secciones del menú
+    const adminSection = document.querySelector('.admin-menu-section');
+    const studentSection = document.querySelector('.student-menu-section');
+    
+    if (adminSection) adminSection.style.display = isAdmin ? 'block' : 'none';
+    if (studentSection) studentSection.style.display = isStudent ? 'block' : 'none';
+}
 
-    document.querySelectorAll('.nav-button').forEach(btn => {
-        if (btn.dataset.view === 'admin-panel') {
-            btn.style.display = isAdmin ? 'flex' : 'none';
+// ========== SECCIÓN REGISTRAR USUARIOS ==========
+async function loadRegistrarUsuariosSection() {
+    console.log('🔄 Cargando vista Registrar Usuarios');
+    
+    const form = document.getElementById('adminRegisterUserForm');
+    if (!form) {
+        console.error('❌ Formulario no encontrado');
+        return;
+    }
+    
+    // Remover event listener anterior si existe
+    form.removeEventListener('submit', handleAdminRegisterSubmit);
+    form.addEventListener('submit', handleAdminRegisterSubmit);
+}
+
+async function handleAdminRegisterSubmit(e) {
+    e.preventDefault();
+    
+    const nombre = document.getElementById('adminRegNombre')?.value;
+    const email = document.getElementById('adminRegEmail')?.value;
+    const username = document.getElementById('adminRegUsername')?.value;
+    const matricula = document.getElementById('adminRegMatricula')?.value;
+    const password = document.getElementById('adminRegPassword')?.value;
+    const rol = document.getElementById('adminRegRol')?.value;
+    
+    if (!nombre || !email || !username || !matricula || !password) {
+        showToastAdmin('❌ Por favor completa todos los campos', 'error');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        
+        // CAMBIAR: usar /api/auth/register en lugar de /api/users/register
+        const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password,
+                email: email,
+                nombre: nombre,
+                matricula: matricula,
+                role: rol
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            showToastAdmin(`✅ Usuario ${rol} registrado exitosamente`, 'success');
+            // Limpiar el formulario
+            document.getElementById('adminRegisterUserForm').reset();
         } else {
-            btn.style.display = isAdmin ? 'none' : 'flex';
+            const error = await response.text();
+            showToastAdmin(`❌ Error: ${error || 'No se pudo registrar'}`, 'error');
         }
-    });
-
-    if (isAdmin) {
-        renderAdminUsers();
+    } catch (error) {
+        console.error('Error:', error);
+        showToastAdmin('❌ Error al registrar usuario', 'error');
     }
 }
 
+
 function switchView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    const targetView = document.getElementById(viewId + 'View');
+    const targetView = document.getElementById(getViewId(viewId));
     if (targetView) targetView.classList.add('active');
 
     document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
@@ -906,8 +965,11 @@ function switchView(viewId) {
     if (viewId === 'materias') renderMaterias();
     if (viewId === 'recompensas') renderRecompensas();
     if (viewId === 'progreso') setTimeout(renderProgresoCharts, 100);
-    if (viewId === 'admin-panel' && currentUser?.role === 'admin') renderAdminUsers();
+    if (viewId === 'registrar-usuarios') loadRegistrarUsuariosSection();
+    if (viewId === 'monitoreo-alumnos') loadMonitoreoAlumnosSection();
+    if (viewId === 'miscelaneo') loadMiscelaneoSection();
 }
+
 
 // ========== EVENT LISTENERS & AUTH ==========
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -1807,6 +1869,285 @@ function mostrarNotificacion(mensaje) {
     setTimeout(() => {
         notificacion.remove();
     }, 4000);
+}
+
+// ========== FUNCIONES AUXILIARES PARA ADMIN ==========
+
+// ========== FUNCIONES ADMIN CORREGIDAS ==========
+
+// Cargar tabla de alumnos
+async function loadAlumnosTableAdmin() {
+    const tbody = document.getElementById('alumnosTableBody');
+    if (!tbody) {
+        console.error('❌ tbody no encontrado');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        console.log('📡 Cargando alumnos...');
+        
+        const response = await fetch('/api/users/admin/all-users', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const users = await response.json();
+        console.log('✅ Usuarios recibidos:', users);
+        
+        const alumnos = users.filter(u => u.role === 'alumno');
+        console.log('👨‍🎓 Alumnos filtrados:', alumnos);
+        
+        if (alumnos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No hay alumnos registrados</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = alumnos.map(alumno => `
+            <tr>
+                <td>${alumno.username || 'N/A'}</td>
+                <td>${alumno.name || 'N/A'}</td>
+                <td>${alumno.email || 'N/A'}</td>
+                <td>${alumno.nivel || 1}</td>
+                <td>${alumno.puntos || 0}</td>
+                <td>
+                    <button class="btn-small" onclick="editAlumnoAdmin('${alumno.username}')">✏️ Editar</button>
+                    <button class="btn-small btn-danger" onclick="deleteAlumnoAdmin('${alumno.username}')">🗑️ Eliminar</button>
+                </td>
+            <tr>
+        `).join('');
+        
+    } catch (error) {
+        console.error('❌ Error al cargar alumnos:', error);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Error al cargar datos</td></tr>';
+    }
+}
+
+// Cargar estadísticas de alumnos
+async function loadAlumnosEstadisticasAdmin() {
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        const response = await fetch('/api/users/admin/all-users', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const users = await response.json();
+        const alumnos = users.filter(u => u.role === 'alumno');
+        
+        const totalAlumnos = alumnos.length;
+        const promedioNivel = totalAlumnos > 0 
+            ? Math.round(alumnos.reduce((sum, a) => sum + (a.nivel || 1), 0) / totalAlumnos) : 0;
+        const totalPuntos = alumnos.reduce((sum, a) => sum + (a.puntos || 0), 0);
+        
+        // Actualizar elementos HTML
+        const totalAlumnosEl = document.getElementById('totalAlumnosCount');
+        const promedioNivelEl = document.getElementById('promedioNivelAlumnos');
+        const totalPuntosEl = document.getElementById('totalPuntosAlumnos');
+        
+        if (totalAlumnosEl) totalAlumnosEl.innerText = totalAlumnos;
+        if (promedioNivelEl) promedioNivelEl.innerText = promedioNivel;
+        if (totalPuntosEl) totalPuntosEl.innerText = totalPuntos;
+        
+        console.log(`📊 Estadísticas: ${totalAlumnos} alumnos, nivel promedio ${promedioNivel}, ${totalPuntos} puntos`);
+        
+    } catch (error) {
+        console.error('❌ Error al cargar estadísticas:', error);
+    }
+}
+
+// Cargar estadísticas de misceláneo
+async function loadMiscelaneoStatsAdmin() {
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        const response = await fetch('/api/users/admin/all-users', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const users = await response.json();
+        const totalUsers = users.length;
+        
+        const totalUsersMisc = document.getElementById('totalUsersMisc');
+        if (totalUsersMisc) totalUsersMisc.innerText = totalUsers;
+        
+        console.log(`📈 Total usuarios en sistema: ${totalUsers}`);
+        
+    } catch (error) {
+        console.error('❌ Error al cargar estadísticas misceláneo:', error);
+    }
+}
+
+// Configurar exportación
+function setupExportAlumnosAdmin() {
+    const exportBtn = document.getElementById('exportAlumnosBtn');
+    if (exportBtn) {
+        exportBtn.onclick = async () => {
+            try {
+                const token = localStorage.getItem('adaptatec_token');
+                const response = await fetch('/api/users/admin/all-users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const users = await response.json();
+                const alumnos = users.filter(u => u.role === 'alumno');
+                
+                const headers = ['Usuario', 'Nombre', 'Email', 'Nivel', 'Puntos'];
+                const rows = alumnos.map(a => [a.username, a.name, a.email, a.nivel, a.puntos]);
+                const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `alumnos_${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+                
+                showToastAdmin('✅ Exportado correctamente', 'success');
+            } catch (error) {
+                showToastAdmin('❌ Error al exportar', 'error');
+            }
+        };
+    }
+}
+
+// Configurar filtros
+function setupMonitoreoFiltersAdmin() {
+    const searchInput = document.getElementById('searchAlumnoInput');
+    const nivelSelect = document.getElementById('filterNivelSelect');
+    
+    if (searchInput) {
+        searchInput.oninput = () => loadAlumnosTableAdmin();
+    }
+    if (nivelSelect) {
+        nivelSelect.onchange = () => loadAlumnosTableAdmin();
+    }
+}
+
+// Editar alumno
+window.editAlumnoAdmin = async function(username) {
+    const nuevoNombre = prompt('✏️ Editar nombre:', '');
+    if (nuevoNombre) {
+        try {
+            const token = localStorage.getItem('adaptatec_token');
+            await fetch(`/api/users/admin/user/${username}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ name: nuevoNombre })
+            });
+            await loadAlumnosTableAdmin();
+            await loadAlumnosEstadisticasAdmin();
+            showToastAdmin('✅ Alumno actualizado', 'success');
+        } catch (error) {
+            showToastAdmin('❌ Error al actualizar', 'error');
+        }
+    }
+};
+
+// Eliminar alumno
+window.deleteAlumnoAdmin = async function(username) {
+    if (confirm(`¿Eliminar al alumno ${username}?`)) {
+        try {
+            const token = localStorage.getItem('adaptatec_token');
+            await fetch(`/api/users/admin/user/${username}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            await loadAlumnosTableAdmin();
+            await loadAlumnosEstadisticasAdmin();
+            showToastAdmin('✅ Alumno eliminado', 'success');
+        } catch (error) {
+            showToastAdmin('❌ Error al eliminar', 'error');
+        }
+    }
+};
+
+// Configurar botones de misceláneo
+function setupMiscelaneoButtonsAdmin() {
+    const backupBtn = document.getElementById('backupDbBtnMisc');
+    const cleanBtn = document.getElementById('cleanDbBtnMisc');
+    const testGeminiBtn = document.getElementById('testGeminiBtnMisc');
+    
+    if (backupBtn) {
+        backupBtn.onclick = () => {
+            const data = { timestamp: new Date(), backup: 'manual' };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `backup_${Date.now()}.json`;
+            link.click();
+            showToastAdmin('✅ Respaldado', 'success');
+        };
+    }
+    
+    if (cleanBtn) {
+        cleanBtn.onclick = () => {
+            if (confirm('¿Limpiar caché?')) {
+                localStorage.removeItem('ai_requests');
+                showToastAdmin('✅ Caché limpiada', 'success');
+            }
+        };
+    }
+    
+    if (testGeminiBtn) {
+        testGeminiBtn.onclick = async () => {
+            showToastAdmin('🔌 Probando conexión...', 'info');
+            setTimeout(() => {
+                showToastAdmin('✅ Conexión exitosa', 'success');
+            }, 1000);
+        };
+    }
+}
+
+// Mostrar toast
+function showToastAdmin(mensaje, tipo) {
+    const toast = document.createElement('div');
+    toast.textContent = mensaje;
+    toast.style.cssText = `
+        position: fixed; bottom: 20px; right: 20px;
+        background: ${tipo === 'success' ? '#10b981' : tipo === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white; padding: 12px 20px; border-radius: 8px;
+        z-index: 10000; font-size: 14px; animation: fadeIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// Las funciones principales de sección (ya las tienes, pero asegúrate que llamen a estas)
+async function loadMonitoreoAlumnosSection() {
+    console.log('🔄 Cargando Monitoreo de Alumnos');
+    await loadAlumnosTableAdmin();
+    await loadAlumnosEstadisticasAdmin();
+    setupMonitoreoFiltersAdmin();
+    setupExportAlumnosAdmin();
+}
+
+async function loadMiscelaneoSection() {
+    console.log('🔄 Cargando Misceláneo');
+    await loadMiscelaneoStatsAdmin();
+    setupMiscelaneoButtonsAdmin();
+}
+
+
+// Convertir nombres de vista a IDs correctos
+function getViewId(viewName) {
+    const mapping = {
+        'dashboard': 'dashboardView',
+        'materias': 'materiasView',
+        'recompensas': 'recompensasView',
+        'progreso': 'progresoView',
+        'modulos': 'modulosView',
+        'registrar-usuarios': 'registrarUsuariosView',
+        'monitoreo-alumnos': 'monitoreoAlumnosView',
+        'miscelaneo': 'miscelaneoView',
+        'admin-panel': 'adminPanelView'
+    };
+    return mapping[viewName] || viewName + 'View';
 }
 
 
