@@ -1246,3 +1246,50 @@ body {
     cursor: pointer;
 }
 
+/* Estilos para el modal de agregar materia */
+.modulo-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.modulo-item input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.modulo-item input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.btn-remove-modulo {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.btn-remove-modulo:hover {
+    background: #dc2626;
+}
+
+#addModuloBtn {
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+    color: #3b82f6;
+    cursor: pointer;
+    padding: 8px 16px;
+}
+
+#addModuloBtn:hover {
+    background: #e2e8f0;
+}

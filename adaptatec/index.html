@@ -96,15 +96,11 @@
                     <!-- Sección de Administración (solo visible para admin) -->
                     <div class="admin-menu-section">
                         <div class="menu-section-title">👑 ADMINISTRACIÓN</div>
-                        <button class="nav-button admin-only" data-view="registrar-usuarios" style="display:none;">
-                            📝 Registrar Usuarios
-                        </button>
-                        <button class="nav-button admin-only" data-view="monitoreo-alumnos" style="display:none;">
-                            📊 Monitoreo de Alumnos
-                        </button>
-                        <button class="nav-button admin-only" data-view="miscelaneo" style="display:none;">
-                            🔧 Misceláneo
-                        </button>
+                        <button class="nav-button admin-only" data-view="general" style="display:none;">📊 General</button>
+                        <button class="nav-button admin-only" data-view="registrar-usuarios" style="display:none;">📝 Registrar Usuarios</button>
+                        <button class="nav-button admin-only" data-view="monitoreo-alumnos" style="display:none;">📊 Monitoreo de Alumnos</button>
+                        <button class="nav-button admin-only" data-view="admin-materias" style="display:none;">📚 Materias</button>
+                        <button class="nav-button admin-only" data-view="miscelaneo" style="display:none;">🔧 Misceláneo</button>
                     </div>
                     
                     <!-- Sección de Estudiante -->
@@ -343,6 +339,53 @@
                                 <!-- ==================== VISTAS DE ADMINISTRADOR ==================== -->
                 
                 <!-- VISTA: REGISTRAR USUARIOS -->
+                                <!-- ==================== VISTAS DE ADMINISTRADOR ==================== -->
+                
+                <!-- VISTA: GENERAL (ARRIBA) -->
+                <section id="generalView" class="view">
+                    <div class="view-header">
+                        <h2>📊 Panel General</h2>
+                        <p>Estadísticas globales del sistema</p>
+                    </div>
+                    
+                    <div class="dashboard-grid" style="margin-bottom: 30px;">
+                        <div class="dashboard-card primary">
+                            <div class="card-header">👥 Total Usuarios</div>
+                            <div class="card-number" id="totalUsuariosGeneral">0</div>
+                            <div class="card-footer">Usuarios registrados</div>
+                        </div>
+                        <div class="dashboard-card success">
+                            <div class="card-header">👨‍🎓 Alumnos</div>
+                            <div class="card-number" id="totalAlumnosGeneral">0</div>
+                            <div class="card-footer">Estudiantes activos</div>
+                        </div>
+                        <div class="dashboard-card warning">
+                            <div class="card-header">⚙️ Administradores</div>
+                            <div class="card-number" id="totalAdminsGeneral">0</div>
+                            <div class="card-footer">Administradores</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-grid" style="margin-bottom: 30px;">
+                        <div class="dashboard-card primary">
+                            <div class="card-header">📚 Materias Activas</div>
+                            <div class="card-number" id="totalMateriasGeneral">0</div>
+                            <div class="card-footer">Cursos disponibles</div>
+                        </div>
+                        <div class="dashboard-card success">
+                            <div class="card-header">⏱️ Horas Totales</div>
+                            <div class="card-number" id="totalHorasGeneral">0</div>
+                            <div class="card-footer">Horas de estudio acumuladas</div>
+                        </div>
+                        <div class="dashboard-card warning">
+                            <div class="card-header">🎁 Tokens Totales</div>
+                            <div class="card-number" id="totalTokensGeneral">0</div>
+                            <div class="card-footer">Tokens acumulados</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VISTA: REGISTRAR USUARIOS -->
                 <section id="registrarUsuariosView" class="view">
                     <div class="view-header">
                         <h2>📝 Registrar Usuarios</h2>
@@ -387,6 +430,7 @@
                 </section>
 
                 <!-- VISTA: MONITOREO DE ALUMNOS -->
+                <!-- VISTA: MONITOREO DE ALUMNOS -->
                 <section id="monitoreoAlumnosView" class="view">
                     <div class="view-header">
                         <h2>📊 Monitoreo de Alumnos</h2>
@@ -400,9 +444,70 @@
                     <div style="overflow-x: auto;">
                         <table class="admin-table">
                             <thead>
-                                <tr><th>Usuario</th><th>Nombre</th><th>Email</th><th>Nivel</th><th>Puntos</th><th>Acciones</th></tr>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Nivel</th>
+                                    <th>Puntos</th>
+                                    <th>Materias Inscritas</th>
+                                    <th>Acciones</th>
+                                </tr>
                             </thead>
-                            <tbody id="alumnosTableBody">...</tbody>
+                            <tbody id="alumnosTableBody">
+                                <tr><td colspan="7" style="text-align: center;">Cargando alumnos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- MODAL PARA DAR DE BAJA MATERIA -->
+                <div id="bajaMateriaModal" class="modal-overlay" style="display:none;">
+                    <div class="modal-content-box" style="max-width: 500px;">
+                        <div class="modal-header-box">
+                            <h3>📚 Dar de Baja Materia</h3>
+                            <button class="close-modal-btn close-btn">&times;</button>
+                        </div>
+                        <div id="bajaMateriaContent">
+                            <p><strong>Alumno:</strong> <span id="bajaAlumnoNombre"></span></p>
+                            <div class="form-group">
+                                <label>Selecciona la materia a dar de baja:</label>
+                                <select id="bajaMateriaSelect" class="form-control" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                                    <option value="">-- Selecciona una materia --</option>
+                                </select>
+                            </div>
+                            <div class="form-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                                <button id="confirmarBajaBtn" class="btn btn-danger">🗑️ Dar de Baja</button>
+                                <button class="btn btn-outline close-modal-btn">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VISTA: MATERIAS (ADMIN) -->
+                <section id="adminMateriasView" class="view">
+                    <div class="view-header">
+                        <h2>📚 Gestión de Materias</h2>
+                        <p>Administra las materias del sistema</p>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn btn-primary" id="addMateriaAdminBtn">➕ Agregar Materia</button>
+                    </div>
+                    
+                    <div style="overflow-x: auto;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Materia</th>
+                                    <th>Descripción</th>
+                                    <th>Módulos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materiasAdminTableBody">
+                                <tr><td colspan="5" style="text-align: center;">Cargando materias...</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </section>
@@ -414,14 +519,43 @@
                         <p>Configuración y estadísticas del sistema</p>
                     </div>
                     
+                    <!-- Nueva sección: Asignar Materias a Alumnos -->
+                    <div class="settings-section" style="background: #f8fafc; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                        <h4>📚 Asignar Materias a Alumnos</h4>
+                        <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 15px;">Selecciona un alumno y las materias que deseas asignarle</p>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <!-- Selección de Alumno -->
+                            <div>
+                                <label style="font-weight: 600; display: block; margin-bottom: 8px;">👨‍🎓 Alumno</label>
+                                <select id="asignarAlumnoSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                                    <option value="">-- Selecciona un alumno --</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Selección de Materias -->
+                            <div>
+                                <label style="font-weight: 600; display: block; margin-bottom: 8px;">📖 Materias a asignar</label>
+                                <div id="asignarMateriasList" style="max-height: 200px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                                    <p class="text-muted">Selecciona un alumno primero</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 20px; text-align: right;">
+                            <button id="asignarMateriasBtn" class="btn btn-primary" style="background: #3b82f6;">➕ Asignar Materias Seleccionadas</button>
+                        </div>
+                        <div id="asignacionMensaje" style="display: none; margin-top: 15px; padding: 10px; border-radius: 8px;"></div>
+                    </div>
+                    
+                    <!-- Configuración existente -->
                     <div class="settings-section" style="background: #f8fafc; border-radius: 16px; padding: 20px;">
-                        <h4>⚙️ Configuración</h4>
+                        <h4>⚙️ Configuración General</h4>
                         <button class="btn btn-small" id="backupDbBtnMisc">💾 Respaldar BD</button>
                         <button class="btn btn-small" id="cleanDbBtnMisc">🗑️ Limpiar Cache</button>
                         <button class="btn btn-small" id="testGeminiBtnMisc">🧪 Probar Conexión IA</button>
                     </div>
                 </section>
-
                 <!-- DOCENTE PANEL VIEW - ELIMINADO -->
             </main>
         </div>
@@ -479,6 +613,65 @@
                 <button id="enviarExamenBtn" class="btn btn-primary">✅ Calificar examen</button>
                 <button id="cancelarExamenBtn" class="btn btn-outline">Cancelar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA AGREGAR MATERIA CON MÓDULOS -->
+    <div id="addMateriaModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content-box" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header-box">
+                <h3>📚 Agregar Nueva Materia</h3>
+                <button class="close-modal-btn close-btn">&times;</button>
+            </div>
+            
+            <form id="addMateriaForm">
+                <div class="form-group">
+                    <label>Nombre de la materia *</label>
+                    <input type="text" id="materiaNombre" placeholder="Ej: Programación Avanzada" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="materiaDescripcion" rows="3" placeholder="Descripción de la materia..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Icono</label>
+                    <select id="materiaIcon">
+                        <option value="📘">📘 Libro</option>
+                        <option value="💻">💻 Programación</option>
+                        <option value="🌐">🌐 Web</option>
+                        <option value="🗄️">🗄️ Base de Datos</option>
+                        <option value="🤖">🤖 IA</option>
+                        <option value="🔒">🔒 Seguridad</option>
+                        <option value="🏗️">🏗️ Arquitectura</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Créditos</label>
+                    <input type="number" id="materiaCreditos" value="4" min="1" max="10">
+                </div>
+                
+                <hr style="margin: 20px 0;">
+                
+                <h4>📖 Módulos de la materia</h4>
+                <p class="text-muted" style="font-size: 0.8rem;">Agrega los módulos que tendrá esta materia</p>
+                
+                <div id="modulosListContainer" style="margin-bottom: 15px;">
+                    <div class="modulo-item" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" class="modulo-nombre" placeholder="Nombre del módulo" style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                        <button type="button" class="btn-remove-modulo btn-small btn-danger" style="display: none;">❌</button>
+                    </div>
+                </div>
+                
+                <button type="button" id="addModuloBtn" class="btn btn-outline btn-small" style="margin-bottom: 20px;">+ Agregar otro módulo</button>
+                
+                <div class="form-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary">✅ Crear Materia</button>
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
 

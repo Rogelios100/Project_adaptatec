@@ -9,11 +9,16 @@ const router = express.Router();
 // ========== UTILIDADES ==========
 async function computeUserProgressSummary(userId) {
   const materias = await all(`
-    SELECT m.id, m.nombre, up.progress, up.horasEstudio, up.modulosCompletados
+    SELECT m.*, COALESCE(up.progress, 0) as progress, 
+           COALESCE(up.modulosCompletados, 0) as modulosCompletados,
+           COALESCE(up.totalModulos, m.total_modulos) as totalModulos,
+           COALESCE(up.horasEstudio, 0) as horasEstudio
     FROM materias m
+    INNER JOIN enrollments e ON m.id = e.materiaId AND e.userId = ?
     LEFT JOIN user_progress up ON m.id = up.materiaId AND up.userId = ?
+    WHERE e.estado IN ('inscrito', 'cursando')
     ORDER BY m.id
-  `, [userId]);
+  `, [userId, userId]);
 
   const totalHoras = materias.reduce((sum, m) => sum + (m.horasEstudio || 0), 0);
   const progressValues = materias.map(m => m.progress || 0);
@@ -45,14 +50,16 @@ router.get('/profile', verifyToken, async (req, res) => {
     }
 
     const materias = await all(`
-      SELECT m.*, COALESCE(up.progress, 0) as progress, 
-             COALESCE(up.modulosCompletados, 0) as modulosCompletados,
-             COALESCE(up.totalModulos, 12) as totalModulos,
-             COALESCE(up.horasEstudio, 0) as horasEstudio
-      FROM materias m
-      LEFT JOIN user_progress up ON m.id = up.materiaId AND up.userId = ?
-      ORDER BY m.id
-    `, [req.user.id]);
+    SELECT m.*, COALESCE(up.progress, 0) as progress, 
+          COALESCE(up.modulosCompletados, 0) as modulosCompletados,
+          COALESCE(up.totalModulos, m.total_modulos) as totalModulos,
+          COALESCE(up.horasEstudio, 0) as horasEstudio
+    FROM materias m
+    INNER JOIN enrollments e ON m.id = e.materiaId AND e.userId = ?
+    LEFT JOIN user_progress up ON m.id = up.materiaId AND up.userId = ?
+    WHERE e.estado IN ('inscrito', 'cursando')
+    ORDER BY m.id
+  `, [req.user.id, req.user.id]);
 
     const summary = await computeUserProgressSummary(req.user.id);
     await run(
@@ -443,6 +450,139 @@ router.get('/admin/test-groq', verifyToken, async (req, res) => {
     }
     res.json({ status: 'ok', message: 'Conexión con Groq disponible' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Asignar materia a un alumno (solo admin)
+router.post('/asignar-materia', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    
+    const { userId, materiaId } = req.body;
+    
+    if (!userId || !materiaId) {
+      return res.status(400).json({ error: 'userId y materiaId son requeridos' });
+    }
+    
+    // Verificar si el usuario existe
+    const user = await get('SELECT id, role FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    if (user.role !== 'alumno') {
+      return res.status(400).json({ error: 'Solo se pueden asignar materias a alumnos' });
+    }
+    
+    // Verificar si la materia existe
+    const materia = await get('SELECT id FROM materias WHERE id = ?', [materiaId]);
+    if (!materia) {
+      return res.status(404).json({ error: 'Materia no encontrada' });
+    }
+    
+    // Verificar si ya está inscrito
+    const enrollment = await get(
+      'SELECT id FROM enrollments WHERE userId = ? AND materiaId = ?',
+      [userId, materiaId]
+    );
+    
+    if (enrollment) {
+      return res.status(400).json({ error: 'El alumno ya está inscrito en esta materia' });
+    }
+    
+    // Inscribir alumno
+    await run(
+      'INSERT INTO enrollments (userId, materiaId, estado) VALUES (?, ?, ?)',
+      [userId, materiaId, 'inscrito']
+    );
+    
+    // Crear progreso inicial
+    await run(
+      `INSERT INTO user_progress (userId, materiaId, progress, modulosCompletados, totalModulos, horasEstudio, estado) 
+       VALUES (?, ?, 0, 0, (SELECT total_modulos FROM materias WHERE id = ?), 0, 'cursando')`,
+      [userId, materiaId, materiaId]
+    );
+    
+    res.json({ success: true, message: 'Materia asignada correctamente' });
+    
+  } catch (error) {
+    console.error('Error asignando materia:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener materias de un alumno específico (solo admin)
+router.get('/:userId/materias', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    
+    const { userId } = req.params;
+    
+    const materias = await all(`
+      SELECT m.id, m.nombre, m.icon, e.estado, e.enrolledAt, up.progress
+      FROM materias m
+      INNER JOIN enrollments e ON m.id = e.materiaId AND e.userId = ?
+      LEFT JOIN user_progress up ON m.id = up.materiaId AND up.userId = ?
+      ORDER BY m.nombre
+    `, [userId, userId]);
+    
+    res.json(materias);
+  } catch (error) {
+    console.error('Error obteniendo materias del alumno:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Dar de baja a un alumno de una materia (solo admin)
+router.post('/baja-materia', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    
+    const { userId, materiaId } = req.body;
+    
+    if (!userId || !materiaId) {
+      return res.status(400).json({ error: 'userId y materiaId son requeridos' });
+    }
+    
+    // Verificar si el alumno está inscrito
+    const enrollment = await get(
+      'SELECT id FROM enrollments WHERE userId = ? AND materiaId = ?',
+      [userId, materiaId]
+    );
+    
+    if (!enrollment) {
+      return res.status(404).json({ error: 'El alumno no está inscrito en esta materia' });
+    }
+    
+    // Eliminar inscripción
+    await run('DELETE FROM enrollments WHERE userId = ? AND materiaId = ?', [userId, materiaId]);
+    
+    // Eliminar progreso
+    await run('DELETE FROM user_progress WHERE userId = ? AND materiaId = ?', [userId, materiaId]);
+    
+    // Eliminar progreso de módulos
+    await run('DELETE FROM modulo_progress WHERE userId = ? AND materiaId = ?', [userId, materiaId]);
+    
+    // Registrar actividad
+    const user = await get('SELECT name FROM users WHERE id = ?', [userId]);
+    const materia = await get('SELECT nombre FROM materias WHERE id = ?', [materiaId]);
+    
+    await run(
+      `INSERT INTO activities (userId, descripcion, tipo) VALUES (?, ?, ?)`,
+      [userId, `📌 Dado de baja de la materia "${materia?.nombre}" por administrador`, 'sistema']
+    );
+    
+    res.json({ success: true, message: 'Alumno dado de baja correctamente' });
+    
+  } catch (error) {
+    console.error('Error dando de baja:', error);
     res.status(500).json({ error: error.message });
   }
 });

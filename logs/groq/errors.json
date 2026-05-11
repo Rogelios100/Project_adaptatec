@@ -234,5 +234,13 @@
     "materia": 3,
     "responseTime": 942,
     "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-11T04:03:43.232Z",
+    "type": "SUCCESS",
+    "pregunta": "hola",
+    "materia": 8,
+    "responseTime": 2031,
+    "statusCode": 200
   }
 ]

@@ -131,5 +131,12 @@
     "materia": 3,
     "respuesta": "Excelente pregunta, estudiante. Una base de datos (BD) es un conjunto organizado de datos almacenados de manera sistemática y estructurada para ser consultados, actualizados y eliminados de manera eficiente. Las bases de datos se utilizan para almacenar, gestionar y recuperar información en un sistema de información.\n\nImagina que tienes una librería con millones de libros. Cada libro tiene un título, autor, fecha de publicación, etc. Si no tienes una forma organizada de almacenar y recuperar esta información, sería muy difícil encontrar un libro específico. Una base de datos es como un catálogo que te permite almacenar y recuperar esta información de manera eficiente.\n\nLas bases de datos pueden ser clasificadas en diferentes tipos, como:\n\n* **Bases de datos relacionales (RDBMS)**: Almacenan datos en tablas relacionadas entre sí. Ejemplo: una base de datos de una tienda que almacena información de clientes, productos y ventas.\n* **Bases de datos no relacionales (NoSQL)**: Almacenan datos de manera no estructurada y no utilizan tablas. Ejemplo: una base de datos de redes sociales que almacena información de usuarios y sus conexiones.\n\nAlgunos de los conceptos básicos de una base de datos incluyen:\n\n* **Tupla**: Un conjunto de valores que representan una fila en una tabla.\n* **Atributo**: Una columna en una tabla que almacena un tipo de información específica.\n* **Relación**: La conexión entre dos o más tablas.\n* **Índice**: Un mecanismo que permite buscar y recuperar datos de manera rápida.\n\nEn la práctica, las bases de datos se utilizan en una variedad de aplicaciones, como:\n\n* Sistemas de gestión de bases de datos (SGBD) como MySQL, PostgreSQL o Microsoft SQL Server.\n* Aplicaciones web como Facebook, Twitter o Instagram.\n* Sistemas de gestión de información como Google Analytics o Salesforce.\n\nEspero que esta explicación te haya ayudado a entender qué es una base de datos. ¿Tienes alguna pregunta adicional?",
     "timestamp": 1778127236636
+  },
+  {
+    "key": "aG9sYXw4",
+    "pregunta": "hola",
+    "materia": 8,
+    "respuesta": "Hola, ¿en qué puedo ayudarte? ¿Tienes alguna duda o necesitas ayuda con algo específico relacionado con la materia de Ingeniería en Sistemas?",
+    "timestamp": 1778472223231
   }
 ]

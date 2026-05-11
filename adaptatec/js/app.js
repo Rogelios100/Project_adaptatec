@@ -335,101 +335,137 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
     if (!materia) return;
     
     currentMateriaId = materiaId;
-    const modulos = modulosPorMateria[materiaId] || [`Módulo 1`, `Módulo 2`, `Módulo 3`];
     
-    // Cargar módulos completados desde localStorage Y BD
+    // Cargar módulos completados desde backend
     await cargarModulosCompletadosLocal(materiaId);
     
-    // Calcular módulos completados de esta materia
-    const completados = calcularModulosCompletadosMateria(materiaId);
-    const nuevoProgreso = Math.round((completados / materia.totalModulos) * 100);
-    
-    // Actualizar materia localmente
-    materia.modulosCompletados = completados;
-    materia.progress = nuevoProgreso;
-    
-    const titleEl = document.getElementById('modulosMateriaTitle');
-    const descEl = document.getElementById('modulosMateriaDesc');
-    if (titleEl) titleEl.innerText = materia.name;
-    if (descEl) descEl.innerHTML = `Progreso: ${nuevoProgreso}% completado | Módulos completados: ${completados}/${materia.totalModulos}`;
-    
-    const container = document.getElementById('modulosGrid');
-    if (container) {
-        container.innerHTML = modulos.map((modulo, index) => {
-            const estaCompletado = modulosCompletadosMap.get(`${materiaId}_${index}`) === true;
-            return `
-                <div class="modulo-card ${estaCompletado ? 'completado' : 'pendiente'}" data-modulo-index="${index}" data-materia-id="${materiaId}">
-                    <div class="modulo-info">
-                        <h4>📖 ${modulo}</h4>
-                        <p>${estaCompletado ? '✅ Completado' : '📌 Por completar'}</p>
-                    </div>
-                    <div class="modulo-actions" style="display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end;">
-                        ${!estaCompletado ? `
-                            <button class="btn-ver-modulo btn-small" data-modulo="${modulo}" data-index="${index}" data-materia-id="${materiaId}">
-                                📖 Ver contenido
-                            </button>
-                            <button class="btn-examen-modulo btn-small" data-modulo="${modulo}" data-index="${index}" data-materia-id="${materiaId}">
-                                📝 Hacer examen
-                            </button>
-                        ` : `
-                            <span class="badge-completado" style="background: #22c55e; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem;">
-                                ✅ Completado
-                            </span>
-                        `}
-                    </div>
-                    <div class="modulo-status" style="margin-top: 8px; text-align: right; font-size: 0.7rem; color: #64748b;">
-                        ${estaCompletado ? '✔️ Completado' : '🔘 Pendiente'}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-    
-    // Agregar event listeners para botones de ver contenido
-    document.querySelectorAll('.btn-ver-modulo').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const index = parseInt(btn.dataset.index);
-            const materiaIdLocal = parseInt(btn.dataset.materiaId);
-            verContenidoModulo(materiaIdLocal, index, btn.dataset.modulo);
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        
+        // Obtener módulos de la materia desde el backend
+        const modulosResponse = await fetch(`/api/materias/${materiaId}/modulos`, {
+            headers: { 'Authorization': `Bearer ${token}` }
         });
-    });
-    
-    // Agregar event listeners para botones de examen
-    document.querySelectorAll('.btn-examen-modulo').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const index = parseInt(btn.dataset.index);
-            const materiaIdLocal = parseInt(btn.dataset.materiaId);
-            iniciarExamen(materia, index, btn.dataset.modulo);
+        
+        let modulos = [];
+        if (modulosResponse.ok) {
+            const data = await modulosResponse.json();
+            // Si la respuesta es un array directo o tiene propiedad modulos
+            modulos = Array.isArray(data) ? data : (data.modulos || []);
+            console.log('📚 Módulos cargados desde BD:', modulos);
+        }
+        
+        // Si no hay módulos en BD, usar los estáticos como fallback
+        if (modulos.length === 0) {
+            console.warn('⚠️ No hay módulos en BD, usando estáticos');
+            modulos = modulosPorMateria[materiaId] || [`Módulo 1`, `Módulo 2`, `Módulo 3`];
+            // Convertir a formato de objeto
+            modulos = modulos.map((nombre, idx) => ({ id: idx + 1, nombre: nombre, orden: idx + 1 }));
+        }
+        
+        // Calcular módulos completados de esta materia
+        const completados = calcularModulosCompletadosMateria(materiaId);
+        const nuevoProgreso = Math.round((completados / materia.totalModulos) * 100);
+        
+        // Actualizar materia localmente
+        materia.modulosCompletados = completados;
+        materia.progress = nuevoProgreso;
+        
+        const titleEl = document.getElementById('modulosMateriaTitle');
+        const descEl = document.getElementById('modulosMateriaDesc');
+        if (titleEl) titleEl.innerText = materia.name;
+        if (descEl) descEl.innerHTML = `Progreso: ${nuevoProgreso}% completado | Módulos completados: ${completados}/${materia.totalModulos}`;
+        
+        const container = document.getElementById('modulosGrid');
+        if (container) {
+            container.innerHTML = modulos.map((modulo, index) => {
+                const moduloNombre = typeof modulo === 'string' ? modulo : modulo.nombre;
+                const moduloId = typeof modulo === 'object' ? modulo.id : index;
+                const estaCompletado = modulosCompletadosMap.get(`${materiaId}_${index}`) === true;
+                
+                return `
+                    <div class="modulo-card ${estaCompletado ? 'completado' : 'pendiente'}" data-modulo-index="${index}" data-materia-id="${materiaId}">
+                        <div class="modulo-info">
+                            <h4>📖 ${moduloNombre}</h4>
+                            <p>${estaCompletado ? '✅ Completado' : '📌 Por completar'}</p>
+                        </div>
+                        <div class="modulo-actions" style="display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end;">
+                            ${!estaCompletado ? `
+                                <button class="btn-ver-modulo btn-small" data-modulo="${moduloNombre}" data-index="${index}" data-materia-id="${materiaId}">
+                                    📖 Ver contenido
+                                </button>
+                                <button class="btn-examen-modulo btn-small" data-modulo="${moduloNombre}" data-index="${index}" data-materia-id="${materiaId}">
+                                    📝 Hacer examen
+                                </button>
+                            ` : `
+                                <span class="badge-completado" style="background: #22c55e; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem;">
+                                    ✅ Completado
+                                </span>
+                            `}
+                        </div>
+                        <div class="modulo-status" style="margin-top: 8px; text-align: right; font-size: 0.7rem; color: #64748b;">
+                            ${estaCompletado ? '✔️ Completado' : '🔘 Pendiente'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Agregar event listeners para botones de ver contenido
+        document.querySelectorAll('.btn-ver-modulo').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = parseInt(btn.dataset.index);
+                const materiaIdLocal = parseInt(btn.dataset.materiaId);
+                const moduloNombre = btn.dataset.modulo;
+                verContenidoModulo(materiaIdLocal, index, moduloNombre);
+            });
         });
-    });
-    
-    // Click en la tarjeta del módulo (ver contenido)
-    document.querySelectorAll('.modulo-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-            if (e.target.classList.contains('btn-ver-modulo') || e.target.classList.contains('btn-examen-modulo')) return;
-            const index = parseInt(card.dataset.moduloIndex);
-            const modulo = modulos[index];
-            const materiaIdLocal = parseInt(card.dataset.materiaId);
-            verContenidoModulo(materiaIdLocal, index, modulo);
+        
+        // Agregar event listeners para botones de examen
+        document.querySelectorAll('.btn-examen-modulo').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = parseInt(btn.dataset.index);
+                const materiaIdLocal = parseInt(btn.dataset.materiaId);
+                const moduloNombre = btn.dataset.modulo;
+                iniciarExamen(materia, index, moduloNombre);
+            });
         });
-    });
-    
-    // Cambiar a la vista de módulos
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    const modulosView = document.getElementById('modulosView');
-    if (modulosView) modulosView.classList.add('active');
-    
-    // Mostrar la burbuja IA
-    const chatFab = document.getElementById('chatFab');
-    if (chatFab) chatFab.classList.add('visible');
-    
-    // Si se solicitó abrir el chat automáticamente
-    if (abrirChat) {
-        setTimeout(() => {
-            abrirChatConContexto(materia.name);
-        }, 300);
+        
+        // Click en la tarjeta del módulo (ver contenido)
+        document.querySelectorAll('.modulo-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.classList.contains('btn-ver-modulo') || e.target.classList.contains('btn-examen-modulo')) return;
+                const index = parseInt(card.dataset.moduloIndex);
+                const modulo = modulos[index];
+                const moduloNombre = typeof modulo === 'string' ? modulo : modulo.nombre;
+                const materiaIdLocal = parseInt(card.dataset.materiaId);
+                verContenidoModulo(materiaIdLocal, index, moduloNombre);
+            });
+        });
+        
+        // Cambiar a la vista de módulos
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        const modulosView = document.getElementById('modulosView');
+        if (modulosView) modulosView.classList.add('active');
+        
+        // Mostrar la burbuja IA
+        const chatFab = document.getElementById('chatFab');
+        if (chatFab) chatFab.classList.add('visible');
+        
+        // Si se solicitó abrir el chat automáticamente
+        if (abrirChat) {
+            setTimeout(() => {
+                abrirChatConContexto(materia.name);
+            }, 300);
+        }
+        
+    } catch (error) {
+        console.error('Error cargando módulos:', error);
+        // Fallback a módulos estáticos
+        const modulos = modulosPorMateria[materiaId] || [`Módulo 1`, `Módulo 2`, `Módulo 3`];
+        // ... resto del código fallback
     }
 }
 
@@ -564,6 +600,22 @@ function renderDashboard() {
         }, 100);
     return; // Importante: los admin no ven el dashboard de estudiante
 }
+}
+
+async function renderAdminPanel() {
+    if (!currentUser || currentUser.role !== 'admin') return;
+    
+    console.log('🔧 renderAdminPanel ejecutándose');
+    
+    initAdminTabs();
+    await loadGeneralSection();
+    await loadRegistrarUsuariosSection();
+    await loadMonitoreoAlumnosSection();
+    await loadAdminMateriasSection();
+    await loadMiscelaneoSection();
+    
+    // Configurar eventos del modal
+    setupMateriaModalEvents();
 }
 
 function renderMaterias() {
@@ -834,9 +886,6 @@ function renderAdminUsers() {
                 <td>${u.email || '-'}</td>
                 <td>${u.role}</td>
                 <td>
-                    <button class="btn-small delete-user" data-user="${u.username}" ${u.username === currentUser?.username ? 'disabled' : ''}>
-                        Eliminar
-                    </button>
                 </td>
             </tr>
         `).join('');
@@ -968,6 +1017,8 @@ function switchView(viewId) {
     if (viewId === 'registrar-usuarios') loadRegistrarUsuariosSection();
     if (viewId === 'monitoreo-alumnos') loadMonitoreoAlumnosSection();
     if (viewId === 'miscelaneo') loadMiscelaneoSection();
+    if (viewId === 'general') loadGeneralSection();
+    if (viewId === 'admin-materias') loadAdminMateriasSection();
 }
 
 
@@ -1875,6 +1926,88 @@ function mostrarNotificacion(mensaje) {
 
 // ========== FUNCIONES ADMIN CORREGIDAS ==========
 
+async function verMateriasAlumno(alumnoId, alumnoNombre) {
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        const response = await fetch(`/api/users/${alumnoId}/materias`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const materias = await response.json();
+            
+            if (materias.length === 0) {
+                alert(`📭 ${alumnoNombre} no tiene materias inscritas`);
+                return;
+            }
+            
+            // Crear mensaje con la lista de materias
+            let mensaje = `📚 Materias inscritas de ${alumnoNombre}:\n\n`;
+            materias.forEach((m, index) => {
+                const progreso = m.progress || 0;
+                const estado = m.estado || 'cursando';
+                let emoji = '';
+                if (progreso === 0) emoji = '🟡';
+                else if (progreso < 50) emoji = '🟠';
+                else if (progreso < 100) emoji = '🟢';
+                else emoji = '✅';
+                
+                mensaje += `${index + 1}. ${emoji} ${m.nombre}\n`;
+                mensaje += `   📊 Progreso: ${progreso}% | Estado: ${estado}\n\n`;
+            });
+            
+            alert(mensaje);
+        } else {
+            const error = await response.text();
+            console.error('Error response:', error);
+            alert('❌ Error al cargar las materias del alumno');
+        }
+    } catch (error) {
+        console.error('Error en verMateriasAlumno:', error);
+        alert('❌ Error al cargar las materias');
+    }
+}
+window.verMateriasAlumno = verMateriasAlumno;
+
+// Abrir modal para dar de baja materia
+window.abrirModalBajaMateria = async function(alumnoId, alumnoNombre) {
+    alumnoSeleccionadoId = alumnoId;
+    alumnoSeleccionadoNombre = alumnoNombre;
+    
+    const modal = document.getElementById('bajaMateriaModal');
+    const alumnoSpan = document.getElementById('bajaAlumnoNombre');
+    const materiaSelect = document.getElementById('bajaMateriaSelect');
+    
+    if (!modal) return;
+    
+    alumnoSpan.innerText = alumnoNombre;
+    
+    // Cargar materias del alumno
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        const response = await fetch(`/api/users/${alumnoId}/materias`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const materias = await response.json();
+            if (materias.length === 0) {
+                materiaSelect.innerHTML = '<option value="">No tiene materias inscritas</option>';
+            } else {
+                materiaSelect.innerHTML = '<option value="">-- Selecciona una materia --</option>' +
+                    materias.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+            }
+        } else {
+            materiaSelect.innerHTML = '<option value="">Error al cargar materias</option>';
+        }
+    } catch (error) {
+        console.error('Error cargando materias:', error);
+        materiaSelect.innerHTML = '<option value="">Error al cargar materias</option>';
+    }
+    
+    modal.style.display = 'flex';
+};
+
 // Cargar tabla de alumnos
 async function loadAlumnosTableAdmin() {
     const tbody = document.getElementById('alumnosTableBody');
@@ -1894,14 +2027,27 @@ async function loadAlumnosTableAdmin() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const users = await response.json();
-        console.log('✅ Usuarios recibidos:', users);
-        
         const alumnos = users.filter(u => u.role === 'alumno');
-        console.log('👨‍🎓 Alumnos filtrados:', alumnos);
         
         if (alumnos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No hay alumnos registrados</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No hay alumnos registrados</td></tr>';
             return;
+        }
+        
+        // Para cada alumno, cargar sus materias inscritas
+        for (const alumno of alumnos) {
+            try {
+                const materiasResponse = await fetch(`/api/users/${alumno.id}/materias`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (materiasResponse.ok) {
+                    alumno.materiasInscritas = await materiasResponse.json();
+                } else {
+                    alumno.materiasInscritas = [];
+                }
+            } catch (err) {
+                alumno.materiasInscritas = [];
+            }
         }
         
         tbody.innerHTML = alumnos.map(alumno => `
@@ -1912,15 +2058,22 @@ async function loadAlumnosTableAdmin() {
                 <td>${alumno.nivel || 1}</td>
                 <td>${alumno.puntos || 0}</td>
                 <td>
+                    ${alumno.materiasInscritas && alumno.materiasInscritas.length > 0 
+                        ? `<span style="cursor: pointer; color: #3b82f6;" onclick="verMateriasAlumno(${alumno.id}, '${alumno.name}')">
+                            📚 ${alumno.materiasInscritas.length} materia(s)
+                           </span>`
+                        : '📭 Sin materias'}
+                 </td>
+                <td>
                     <button class="btn-small" onclick="editAlumnoAdmin('${alumno.username}')">✏️ Editar</button>
-                    <button class="btn-small btn-danger" onclick="deleteAlumnoAdmin('${alumno.username}')">🗑️ Eliminar</button>
-                </td>
-            <tr>
+                    <button class="btn-small btn-warning" onclick="abrirModalBajaMateria(${alumno.id}, '${alumno.name}')" style="background: #f59e0b; color: white;">📚 Dar Baja Materias</button>
+                 </td>
+            </tr>
         `).join('');
         
     } catch (error) {
         console.error('❌ Error al cargar alumnos:', error);
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Error al cargar datos</td></tr>';
+        tbody.innerHTML = '<td><td colspan="7" style="text-align: center;">Error al cargar datos</td></tr>';
     }
 }
 
@@ -2118,6 +2271,8 @@ function showToastAdmin(mensaje, tipo) {
     setTimeout(() => toast.remove(), 3000);
 }
 
+
+
 // Las funciones principales de sección (ya las tienes, pero asegúrate que llamen a estas)
 async function loadMonitoreoAlumnosSection() {
     console.log('🔄 Cargando Monitoreo de Alumnos');
@@ -2125,13 +2280,185 @@ async function loadMonitoreoAlumnosSection() {
     await loadAlumnosEstadisticasAdmin();
     setupMonitoreoFiltersAdmin();
     setupExportAlumnosAdmin();
+    setupBajaMateriaModal();
 }
 
 async function loadMiscelaneoSection() {
     console.log('🔄 Cargando Misceláneo');
     await loadMiscelaneoStatsAdmin();
     setupMiscelaneoButtonsAdmin();
+    await loadAsignacionData(); // Agregar esta línea
+    
+    // Evento del botón de asignar
+    const asignarBtn = document.getElementById('asignarMateriasBtn');
+    if (asignarBtn) {
+        asignarBtn.onclick = asignarMateriasAlumno;
+    }
 }
+
+async function loadGeneralSection() {
+    console.log('🔄 Cargando Panel General');
+    
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        const response = await fetch('/api/users/admin/all-users', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) throw new Error('Error al cargar usuarios');
+        
+        const users = await response.json();
+        
+        // Calcular estadísticas
+        const totalUsuarios = users.length;
+        const totalAlumnos = users.filter(u => u.role === 'alumno').length;
+        const totalDocentes = users.filter(u => u.role === 'docente').length;
+        const totalAdmins = users.filter(u => u.role === 'admin').length;
+        
+        // Cargar materias
+        const materiasResponse = await fetch('/api/materias', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const materias = await materiasResponse.json();
+        const totalMateriasActivas = materias.filter(m => m.activo !== false).length;
+        
+        // Calcular horas totales, logros y tokens
+        let totalHoras = 0;
+        let totalLogros = 0;
+        let totalTokens = 0;
+        
+        users.forEach(user => {
+            totalHoras += user.horas || 0;
+            totalLogros += user.logros || 0;
+            totalTokens += user.tokens || 0;
+        });
+        
+        // Actualizar DOM
+        document.getElementById('totalUsuariosGeneral').innerText = totalUsuarios;
+        document.getElementById('totalAlumnosGeneral').innerText = totalAlumnos;
+        document.getElementById('totalAdminsGeneral').innerText = totalAdmins;
+        document.getElementById('totalMateriasGeneral').innerText = totalMateriasActivas;
+        document.getElementById('totalHorasGeneral').innerText = totalHoras;
+        document.getElementById('totalTokensGeneral').innerText = totalTokens;
+        
+        console.log('✅ Panel General actualizado');
+        
+    } catch (error) {
+        console.error('❌ Error cargando Panel General:', error);
+        // Mostrar datos de ejemplo si hay error
+        document.getElementById('totalUsuariosGeneral').innerText = '--';
+        document.getElementById('totalAlumnosGeneral').innerText = '--';
+        document.getElementById('totalAdminsGeneral').innerText = '--';
+        document.getElementById('totalMateriasGeneral').innerText = '--';
+        document.getElementById('totalHorasGeneral').innerText = '--';
+        document.getElementById('totalTokensGeneral').innerText = '--';
+    }
+}
+
+async function loadAdminMateriasSection() {
+    console.log('🔄 Cargando Gestión de Materias');
+    
+    const tbody = document.getElementById('materiasAdminTableBody');
+    if (!tbody) return;
+    
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        // Quitar el filtro WHERE activo = 1 para traer TODAS las materias
+        const response = await fetch('/api/materias/admin/all', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Si la ruta no existe, usar la normal y mostrar todas
+        let materias = [];
+        if (response.ok) {
+            materias = await response.json();
+        } else {
+            // Fallback: usar la ruta normal
+            const fallbackResponse = await fetch('/api/materias', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            materias = await fallbackResponse.json();
+        }
+        
+        if (materias.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay materias registradas</td><tr>';
+            return;
+        }
+        
+        tbody.innerHTML = materias.map(materia => {
+            const esActiva = materia.activo !== false;
+            return `
+                <tr>
+                    <td>${materia.id || 'N/A'}</td>
+                    <td>
+                        <strong>${materia.nombre || 'Sin nombre'}</strong>
+                        <br>
+                        <span style="font-size: 0.7rem; color: ${esActiva ? '#10b981' : '#ef4444'};">
+                            ${esActiva ? '✅ Activa' : '❌ Inactiva'}
+                        </span>
+                    </td>
+                    <td>${(materia.desc || materia.descripcion || '').substring(0, 60)}...</td>
+                    <td>${materia.total_modulos || 0} módulos</td>
+                </tr>
+            `;
+        }).join('');
+        
+        console.log('✅ Materias cargadas:', materias.length);
+        
+    } catch (error) {
+        console.error('❌ Error cargando materias:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Error al cargar materias</td><tr>';
+    }
+}
+
+// Función para activar/desactivar materia
+window.toggleMateriaStatus = async function(materiaId) {
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        const response = await fetch(`/api/materias/${materiaId}/toggle`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            showToastAdmin('✅ Estado de materia actualizado', 'success');
+            await loadAdminMateriasSection();
+            await loadGeneralSection(); // Actualizar también el panel general
+        } else {
+            showToastAdmin('❌ Error al actualizar estado', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToastAdmin('❌ Error al actualizar estado', 'error');
+    }
+};
+
+// Función para eliminar materia
+window.deleteMateria = async function(materiaId) {
+    if (confirm('¿Estás seguro de eliminar esta materia? Esta acción no se puede deshacer.')) {
+        try {
+            const token = localStorage.getItem('adaptatec_token');
+            const response = await fetch(`/api/materias/${materiaId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (response.ok) {
+                showToastAdmin('✅ Materia eliminada', 'success');
+                await loadAdminMateriasSection();
+                await loadGeneralSection();
+            } else {
+                showToastAdmin('❌ Error al eliminar materia', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showToastAdmin('❌ Error al eliminar materia', 'error');
+        }
+    }
+};
 
 
 // Convertir nombres de vista a IDs correctos
@@ -2142,13 +2469,438 @@ function getViewId(viewName) {
         'recompensas': 'recompensasView',
         'progreso': 'progresoView',
         'modulos': 'modulosView',
+        'general': 'generalView',
         'registrar-usuarios': 'registrarUsuariosView',
         'monitoreo-alumnos': 'monitoreoAlumnosView',
-        'miscelaneo': 'miscelaneoView',
-        'admin-panel': 'adminPanelView'
+        'admin-materias': 'adminMateriasView',
+        'miscelaneo': 'miscelaneoView'
     };
     return mapping[viewName] || viewName + 'View';
 }
+
+// ========== MODAL PARA AGREGAR MATERIA CON MÓDULOS ==========
+
+// Abrir modal
+function showAddMateriaModal() {
+    const modal = document.getElementById('addMateriaModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        // Limpiar formulario
+        document.getElementById('addMateriaForm').reset();
+        // Resetear módulos a 1 solo
+        const container = document.getElementById('modulosListContainer');
+        container.innerHTML = `
+            <div class="modulo-item" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <input type="text" class="modulo-nombre" placeholder="Nombre del módulo" style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                <button type="button" class="btn-remove-modulo btn-small btn-danger" style="display: none;">❌</button>
+            </div>
+        `;
+    }
+}
+
+// Cerrar modal
+function closeAddMateriaModal() {
+    const modal = document.getElementById('addMateriaModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Agregar nuevo campo de módulo
+function addModuloField() {
+    const container = document.getElementById('modulosListContainer');
+    const moduloDiv = document.createElement('div');
+    moduloDiv.className = 'modulo-item';
+    moduloDiv.style.cssText = 'display: flex; gap: 10px; margin-bottom: 10px;';
+    moduloDiv.innerHTML = `
+        <input type="text" class="modulo-nombre" placeholder="Nombre del módulo" style="flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1;">
+        <button type="button" class="btn-remove-modulo btn-small btn-danger" onclick="this.parentElement.remove()">❌</button>
+    `;
+    container.appendChild(moduloDiv);
+    
+    // Mostrar botones de eliminar en todos los módulos excepto el primero
+    const removeBtns = container.querySelectorAll('.btn-remove-modulo');
+    removeBtns.forEach(btn => btn.style.display = 'flex');
+}
+
+// Crear materia con módulos
+async function createMateriaWithModulos(e) {
+    e.preventDefault();
+    
+    const nombre = document.getElementById('materiaNombre').value;
+    const descripcion = document.getElementById('materiaDescripcion').value;
+    const icon = document.getElementById('materiaIcon').value;
+    const creditos = parseInt(document.getElementById('materiaCreditos').value);
+    
+    if (!nombre) {
+        showToastAdmin('❌ El nombre de la materia es requerido', 'error');
+        return;
+    }
+    
+    // Obtener módulos
+    const moduloInputs = document.querySelectorAll('#modulosListContainer .modulo-nombre');
+    const modulos = [];
+    moduloInputs.forEach(input => {
+        if (input.value.trim()) {
+            modulos.push(input.value.trim());
+        }
+    });
+    
+    if (modulos.length === 0) {
+        showToastAdmin('❌ Debes agregar al menos un módulo', 'error');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        
+        // Crear materia
+        const materiaResponse = await fetch('/api/materias', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                descripcion: descripcion,
+                icon: icon,
+                creditos: creditos,
+                total_modulos: modulos.length,
+                activo: true
+            })
+        });
+        
+        if (!materiaResponse.ok) throw new Error('Error al crear materia');
+        
+        const materia = await materiaResponse.json();
+        const materiaId = materia.id;
+        
+        // Crear módulos
+        for (let i = 0; i < modulos.length; i++) {
+            await fetch('/api/materias/modulos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    materiaId: materiaId,
+                    nombre: modulos[i],
+                    orden: i + 1
+                })
+            });
+        }
+        
+        showToastAdmin(`✅ Materia "${nombre}" creada con ${modulos.length} módulos`, 'success');
+        closeAddMateriaModal();
+        
+        // Recargar listas
+        await loadAdminMateriasSection();
+        await loadGeneralSection();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showToastAdmin('❌ Error al crear la materia', 'error');
+    }
+}
+
+// Configurar eventos del modal
+function setupMateriaModalEvents() {
+    const modal = document.getElementById('addMateriaModal');
+    if (!modal) return;
+    
+    // Botón de agregar materia
+    const addBtn = document.getElementById('addMateriaAdminBtn');
+    if (addBtn) {
+        addBtn.onclick = showAddMateriaModal;
+    }
+    
+    // Botones de cerrar
+    const closeBtns = modal.querySelectorAll('.close-modal-btn');
+    closeBtns.forEach(btn => {
+        btn.onclick = closeAddMateriaModal;
+    });
+    
+    // Clic fuera del modal
+    modal.onclick = (e) => {
+        if (e.target === modal) closeAddMateriaModal();
+    };
+    
+    // Botón de agregar módulo
+    const addModuloBtn = document.getElementById('addModuloBtn');
+    if (addModuloBtn) {
+        addModuloBtn.onclick = addModuloField;
+    }
+    
+    // Submit del formulario
+    const form = document.getElementById('addMateriaForm');
+    if (form) {
+        form.onsubmit = createMateriaWithModulos;
+    }
+}
+
+// Inicializar modal cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    // Esperar a que currentUser esté disponible
+    const checkInterval = setInterval(() => {
+        if (currentUser && currentUser.role === 'admin') {
+            setupMateriaModalEvents();
+            clearInterval(checkInterval);
+        }
+    }, 500);
+});
+
+// ========== ASIGNAR MATERIAS A ALUMNOS ==========
+
+// Cargar alumnos y materias para asignación
+async function loadAsignacionData() {
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        
+        // Cargar alumnos
+        const usersResponse = await fetch('/api/users/admin/all-users', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const users = await usersResponse.json();
+        const alumnos = users.filter(u => u.role === 'alumno');
+        
+        // Cargar materias
+        const materiasResponse = await fetch('/api/materias', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const materias = await materiasResponse.json();
+        
+        // Llenar select de alumnos
+        const alumnoSelect = document.getElementById('asignarAlumnoSelect');
+        if (alumnoSelect) {
+            alumnoSelect.innerHTML = '<option value="">-- Selecciona un alumno --</option>' +
+                alumnos.map(a => `<option value="${a.id}">${a.name} (${a.username})</option>`).join('');
+            
+            // Agregar evento para cargar materias del alumno
+            alumnoSelect.onchange = () => cargarMateriasAlumno(alumnoSelect.value, materias, token);
+        }
+        
+    } catch (error) {
+        console.error('Error cargando datos para asignación:', error);
+    }
+}
+
+// Cargar materias del alumno y mostrar checkboxes
+async function cargarMateriasAlumno(alumnoId, materias, token) {
+    const container = document.getElementById('asignarMateriasList');
+    if (!container || !alumnoId) {
+        if (container) container.innerHTML = '<p class="text-muted">Selecciona un alumno primero</p>';
+        return;
+    }
+    
+    try {
+        // Obtener materias actuales del alumno
+        const userResponse = await fetch(`/api/users/admin/user/${alumnoId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Si no existe la ruta, usar un array vacío
+        let materiasAlumno = [];
+        if (userResponse.ok) {
+            const userData = await userResponse.json();
+            materiasAlumno = userData.materias || [];
+        }
+        
+        const materiasIdsAlumno = materiasAlumno.map(m => m.id);
+        
+        // Mostrar checkboxes de materias
+        container.innerHTML = materias.map(materia => `
+            <label style="display: flex; align-items: center; padding: 8px; margin: 4px 0; background: ${materiasIdsAlumno.includes(materia.id) ? '#e8f5e9' : 'transparent'}; border-radius: 8px; cursor: pointer;">
+                <input type="checkbox" class="materia-checkbox" value="${materia.id}" data-nombre="${materia.nombre}" 
+                    ${materiasIdsAlumno.includes(materia.id) ? 'checked disabled' : ''}>
+                <span style="margin-left: 10px; flex: 1;">
+                    ${materia.nombre}
+                    ${materiasIdsAlumno.includes(materia.id) ? '<span style="color: #10b981; font-size: 0.7rem;"> (Ya inscrito)</span>' : ''}
+                </span>
+                <span style="font-size: 0.7rem; color: #64748b;">${materia.total_modulos || 12} módulos</span>
+            </label>
+        `).join('');
+        
+        if (materias.length === 0) {
+            container.innerHTML = '<p class="text-muted">No hay materias disponibles</p>';
+        }
+        
+    } catch (error) {
+        console.error('Error cargando materias del alumno:', error);
+        container.innerHTML = '<p class="text-muted">Error al cargar materias</p>';
+    }
+}
+
+// Asignar materias seleccionadas al alumno
+async function asignarMateriasAlumno() {
+    const alumnoId = document.getElementById('asignarAlumnoSelect')?.value;
+    const checkboxes = document.querySelectorAll('#asignarMateriasList .materia-checkbox:checked:not([disabled])');
+    const materiasIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    const materiasNombres = Array.from(checkboxes).map(cb => cb.dataset.nombre);
+    
+    if (!alumnoId) {
+        mostrarMensajeAsignacion('❌ Selecciona un alumno primero', 'error');
+        return;
+    }
+    
+    if (materiasIds.length === 0) {
+        mostrarMensajeAsignacion('❌ Selecciona al menos una materia para asignar', 'error');
+        return;
+    }
+    
+    mostrarMensajeAsignacion(`📚 Asignando ${materiasIds.length} materia(s)...`, 'info');
+    
+    try {
+        const token = localStorage.getItem('adaptatec_token');
+        let exito = 0;
+        let errores = 0;
+        
+        for (const materiaId of materiasIds) {
+            try {
+                // Asignar materia al alumno (crear enrollment)
+                const response = await fetch('/api/users/asignar-materia', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        userId: alumnoId,
+                        materiaId: materiaId
+                    })
+                });
+                
+                if (response.ok) {
+                    exito++;
+                } else {
+                    errores++;
+                    console.error(`Error asignando materia ${materiaId}:`, await response.text());
+                }
+            } catch (err) {
+                errores++;
+                console.error(`Error en materia ${materiaId}:`, err);
+            }
+        }
+        
+        if (exito > 0) {
+            mostrarMensajeAsignacion(`✅ Asignadas ${exito} materia(s) correctamente${errores > 0 ? `. ${errores} fallaron.` : ''}`, 'success');
+            // Recargar la lista de materias del alumno
+            const token = localStorage.getItem('adaptatec_token');
+            const materiasResponse = await fetch('/api/materias', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const materias = await materiasResponse.json();
+            cargarMateriasAlumno(alumnoId, materias, token);
+        } else {
+            mostrarMensajeAsignacion('❌ No se pudo asignar ninguna materia', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error en asignación:', error);
+        mostrarMensajeAsignacion('❌ Error al asignar materias', 'error');
+    }
+}
+
+function mostrarMensajeAsignacion(mensaje, tipo) {
+    const msgDiv = document.getElementById('asignacionMensaje');
+    if (!msgDiv) return;
+    
+    msgDiv.textContent = mensaje;
+    msgDiv.style.display = 'block';
+    msgDiv.style.backgroundColor = tipo === 'success' ? '#d4edda' : tipo === 'error' ? '#f8d7da' : '#cfe2ff';
+    msgDiv.style.color = tipo === 'success' ? '#155724' : tipo === 'error' ? '#721c24' : '#084298';
+    msgDiv.style.border = `1px solid ${tipo === 'success' ? '#c3e6cb' : tipo === 'error' ? '#f5c6cb' : '#b6d4fe'}`;
+    msgDiv.style.padding = '10px';
+    msgDiv.style.borderRadius = '8px';
+    
+    setTimeout(() => {
+        msgDiv.style.display = 'none';
+    }, 3000);
+}
+
+// Variable global para almacenar el alumno seleccionado
+let alumnoSeleccionadoId = null;
+let alumnoSeleccionadoNombre = null;
+
+// Abrir modal para dar de baja materia
+
+
+// Confirmar baja de materia
+async function confirmarBajaMateria() {
+    const materiaSelect = document.getElementById('bajaMateriaSelect');
+    const materiaId = materiaSelect.value;
+    
+    if (!materiaId) {
+        showToastAdmin('❌ Selecciona una materia para dar de baja', 'error');
+        return;
+    }
+    
+    const materiaNombre = materiaSelect.options[materiaSelect.selectedIndex]?.text || 'esta materia';
+    
+    if (confirm(`¿Estás seguro de dar de baja a "${alumnoSeleccionadoNombre}" de la materia "${materiaNombre}"?`)) {
+        try {
+            const token = localStorage.getItem('adaptatec_token');
+            const response = await fetch('/api/users/baja-materia', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    userId: alumnoSeleccionadoId,
+                    materiaId: parseInt(materiaId)
+                })
+            });
+            
+            if (response.ok) {
+                showToastAdmin(`✅ Alumno dado de baja de "${materiaNombre}" correctamente`, 'success');
+                cerrarModalBaja();
+                await loadAlumnosTableAdmin(); // Recargar tabla
+            } else {
+                const error = await response.json();
+                showToastAdmin(`❌ Error: ${error.error || 'No se pudo dar de baja'}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showToastAdmin('❌ Error al dar de baja', 'error');
+        }
+    }
+}
+
+// Cerrar modal de baja
+function cerrarModalBaja() {
+    const modal = document.getElementById('bajaMateriaModal');
+    if (modal) modal.style.display = 'none';
+    alumnoSeleccionadoId = null;
+    alumnoSeleccionadoNombre = null;
+}
+
+// Configurar modal de baja de materia
+function setupBajaMateriaModal() {
+    // Botón confirmar
+    const confirmarBtn = document.getElementById('confirmarBajaBtn');
+    if (confirmarBtn) {
+        const newBtn = confirmarBtn.cloneNode(true);
+        confirmarBtn.parentNode.replaceChild(newBtn, confirmarBtn);
+        newBtn.onclick = confirmarBajaMateria;
+    }
+    
+    // Botones cerrar
+    const closeBtns = document.querySelectorAll('#bajaMateriaModal .close-modal-btn');
+    closeBtns.forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.onclick = cerrarModalBaja;
+    });
+    
+    // Clic fuera del modal
+    const modal = document.getElementById('bajaMateriaModal');
+    if (modal) {
+        modal.onclick = (e) => {
+            if (e.target === modal) cerrarModalBaja();
+        };
+    }
+}
+
 
 
 // ========== GEMINI CONFIGURATION LISTENERS ==========
