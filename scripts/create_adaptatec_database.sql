@@ -1,5 +1,5 @@
 -- Script MySQL para crear la base de datos de Adaptatec
--- Tablas: usuarios, materias, docentes, inscripciones y progreso de estudiantes
+-- Tablas: usuarios, materias, módulos, docentes, inscripciones, progreso, recompensas y objetivos
 
 CREATE DATABASE IF NOT EXISTS adaptatec CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE adaptatec;
@@ -13,12 +13,15 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   email VARCHAR(150) UNIQUE NOT NULL,
   name VARCHAR(150) NOT NULL,
-  role VARCHAR(50) NOT NULL DEFAULT 'alumno',
+  role ENUM('alumno', 'docente', 'admin') NOT NULL DEFAULT 'alumno',
   nivel INT DEFAULT 1,
   puntos INT DEFAULT 0,
   logros INT DEFAULT 0,
   totalLogros INT DEFAULT 24,
   horas INT DEFAULT 0,
+  tokens INT DEFAULT 0,
+  recompensas_obtenidas TEXT DEFAULT NULL,
+  ultimo_acceso DATETIME DEFAULT NULL,
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -27,12 +30,24 @@ CREATE TABLE IF NOT EXISTS materias (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(150) UNIQUE NOT NULL,
   descripcion TEXT,
-  icon VARCHAR(50),
+  icon VARCHAR(50) DEFAULT '📘',
   categoria VARCHAR(100),
   creditos INT DEFAULT 3,
   nivel INT DEFAULT 1,
+  total_modulos INT DEFAULT 12,
+  activo BOOLEAN DEFAULT TRUE,
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS modulos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  materiaId INT NOT NULL,
+  nombre VARCHAR(200) NOT NULL,
+  descripcion TEXT,
+  orden INT DEFAULT 0,
+  FOREIGN KEY (materiaId) REFERENCES materias(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  UNIQUE KEY uq_modulo_materia (materiaId, orden)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS materia_docente (
@@ -50,7 +65,8 @@ CREATE TABLE IF NOT EXISTS enrollments (
   userId INT NOT NULL,
   materiaId INT NOT NULL,
   enrolledAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  status VARCHAR(50) DEFAULT 'inscrito',
+  estado ENUM('inscrito', 'cursando', 'completado', 'reprobado') DEFAULT 'inscrito',
+  calificacion_final DECIMAL(4,2) DEFAULT 0,
   UNIQUE KEY uq_enrollment (userId, materiaId),
   FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (materiaId) REFERENCES materias(id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -65,12 +81,26 @@ CREATE TABLE IF NOT EXISTS user_progress (
   totalModulos INT DEFAULT 12,
   horasEstudio INT DEFAULT 0,
   calificacion DECIMAL(4,2) DEFAULT 0,
+  estado ENUM('cursando', 'aprobada', 'reprobada') DEFAULT 'cursando',
   comentarios TEXT,
   lastAccessed DATETIME,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_user_progress (userId, materiaId),
   FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (materiaId) REFERENCES materias(id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS modulo_progress (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  userId INT NOT NULL,
+  materiaId INT NOT NULL,
+  moduloId INT NOT NULL,
+  completado BOOLEAN DEFAULT FALSE,
+  fecha_completado DATETIME DEFAULT NULL,
+  UNIQUE KEY uq_user_materia_modulo (userId, materiaId, moduloId),
+  FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (materiaId) REFERENCES materias(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (moduloId) REFERENCES modulos(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS progress_history (
@@ -89,7 +119,7 @@ CREATE TABLE IF NOT EXISTS activities (
   id INT AUTO_INCREMENT PRIMARY KEY,
   userId INT NOT NULL,
   descripcion TEXT NOT NULL,
-  tipo VARCHAR(50) DEFAULT 'general',
+  tipo ENUM('general', 'logro', 'modulo', 'examen', 'ia') DEFAULT 'general',
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
@@ -99,7 +129,7 @@ CREATE TABLE IF NOT EXISTS objectives (
   clave VARCHAR(100) UNIQUE NOT NULL,
   nombre VARCHAR(150) NOT NULL,
   descripcion TEXT,
-  tipo VARCHAR(50) DEFAULT 'progreso',
+  tipo ENUM('progreso', 'horas', 'materia', 'promedio', 'puntos') DEFAULT 'progreso',
   objetivo INT DEFAULT 0,
   unidad VARCHAR(50) DEFAULT 'percent',
   puntos INT DEFAULT 0,
@@ -111,7 +141,7 @@ CREATE TABLE IF NOT EXISTS user_objectives (
   id INT AUTO_INCREMENT PRIMARY KEY,
   userId INT NOT NULL,
   objectiveId INT NOT NULL,
-  estado VARCHAR(50) DEFAULT 'pendiente',
+  estado ENUM('pendiente', 'completado', 'reclamado') DEFAULT 'pendiente',
   progreso INT DEFAULT 0,
   desbloqueadoAt DATETIME,
   UNIQUE KEY uq_user_objective (userId, objectiveId),
@@ -123,9 +153,11 @@ CREATE TABLE IF NOT EXISTS rewards (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(150) NOT NULL,
   descripcion TEXT,
+  icon VARCHAR(50) DEFAULT '🏆',
   requiredPoints INT DEFAULT 0,
   requiredProgress INT DEFAULT 0,
   requiredHours INT DEFAULT 0,
+  requiredMaterias INT DEFAULT 0,
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -140,20 +172,43 @@ CREATE TABLE IF NOT EXISTS user_rewards (
   FOREIGN KEY (rewardId) REFERENCES rewards(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS recompensas_canjeables (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  descripcion TEXT,
+  tokens_necesarios INT NOT NULL,
+  beneficio VARCHAR(100),
+  activo BOOLEAN DEFAULT TRUE,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS canjes_usuario (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  userId INT NOT NULL,
+  recompensaId INT NOT NULL,
+  fecha_canje DATETIME DEFAULT CURRENT_TIMESTAMP,
+  estado ENUM('pendiente', 'entregado', 'usado') DEFAULT 'pendiente',
+  FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (recompensaId) REFERENCES recompensas_canjeables(id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- Solo usuario administrador de prueba
-INSERT IGNORE INTO users (matricula, username, password, email, name, role, nivel, puntos, logros, horas)
+INSERT IGNORE INTO users (matricula, username, password, email, name, role, nivel, puntos, logros, horas, tokens)
 VALUES
-  ('ADMIN-0001', 'ADMIN001', 'password_hash_example', 'admin@adaptatec.com', 'Admin Global', 'admin', 1, 0, 0, 0);
---Objetivos de ejemplo
+  ('ADMIN-0001', 'ADMIN001', 'password_hash_example', 'admin@adaptatec.com', 'Admin Global', 'admin', 1, 0, 0, 0, 0);
+
+-- Objetivos de ejemplo
 INSERT IGNORE INTO objectives (clave, nombre, descripcion, tipo, objetivo, unidad, puntos) VALUES
   ('primer_curso', 'Completa tu primera materia', 'Alcanza 100% en al menos una materia.', 'materia', 100, 'percent', 10),
   ('diez_horas', 'Acumula 10 horas de estudio', 'Registra al menos 10 horas de estudio en tus materias.', 'horas', 10, 'hours', 10),
-  ('avance_promedio', 'Promedio de progreso 70%', 'Mantén un promedio de progreso de al menos 70% en tus materias.', 'promedio', 70, 'percent', 10);
---Recompensas de ejemplo
-INSERT IGNORE INTO rewards (nombre, descripcion, requiredPoints, requiredProgress, requiredHours) VALUES
-  ('Primer Paso', 'Completa tu primera materia o registra 10 horas de estudio.', 0, 100, 10),
-  ('Racha de Estudio', 'Mantén un progreso constante en varias materias.', 20, 75, 0),
-  ('Experto en Algoritmos', 'Alcanza 85% o más en la materia Algoritmos.', 50, 85, 0),
-  ('Maestro del DOM', 'Alcanza 80% o más en Desarrollo Web.', 65, 80, 0);
+  ('avance_promedio', 'Promedio de progreso 70%', 'Mantén un progreso de al menos 70% en tus materias.', 'promedio', 70, 'percent', 10);
+
+-- Recompensas de ejemplo
+INSERT IGNORE INTO rewards (nombre, descripcion, icon, requiredPoints, requiredProgress, requiredHours) VALUES
+  ('Primer Paso', 'Completa tu primera materia o registra 10 horas de estudio.', '🏅', 0, 100, 10),
+  ('Racha de Estudio', 'Mantén un progreso constante en varias materias.', '🔥', 20, 75, 0),
+  ('Experto en Algoritmos', 'Alcanza 85% o más en la materia Algoritmos.', '🧠', 50, 85, 0),
+  ('Maestro del DOM', 'Alcanza 80% o más en Desarrollo Web.', '⚡', 65, 80, 0);
