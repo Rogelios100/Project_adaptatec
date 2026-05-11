@@ -1073,24 +1073,55 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     document.getElementById('loginPassword').value = '';
 });
 
+function generateAlumnoUsername(matricula) {
+    const cleanMatricula = (matricula || '').trim();
+    const digits = cleanMatricula.replace(/\D/g, '');
+    const lastDigits = digits ? digits.slice(-4).padStart(4, '0') : cleanMatricula.slice(-4).toUpperCase().replace(/\W/g, '') || '0000';
+    return `ALU${lastDigits}`;
+}
+
+function showRegisterSuccessOverlay(name, username) {
+    const overlay = document.getElementById('registerSuccessOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('fade-out');
+    overlay.classList.add('visible');
+    document.getElementById('overlayName').textContent = name || 'Estudiante';
+    document.getElementById('overlayUsername').textContent = username;
+    setTimeout(() => {
+        hideRegisterSuccessOverlay();
+    }, 3200);
+}
+
+function hideRegisterSuccessOverlay() {
+    const overlay = document.getElementById('registerSuccessOverlay');
+    if (!overlay) return;
+    overlay.classList.add('fade-out');
+    setTimeout(() => {
+        overlay.classList.remove('visible', 'fade-out');
+        document.querySelector('.tab-button[data-tab="login"]').click();
+    }, 350);
+}
+
+document.getElementById('closeRegisterOverlayBtn').addEventListener('click', hideRegisterSuccessOverlay);
+
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const matricula = document.getElementById('regMatricula').value;
-    const username = document.getElementById('regUsername').value;
-    const email = document.getElementById('regEmail').value;
+    const matricula = document.getElementById('regMatricula').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPassword').value;
-    const name = document.getElementById('regName').value;
-    
+    const name = document.getElementById('regName').value.trim();
+    const username = generateAlumnoUsername(matricula);
+
+    if (!matricula || !email || !password || !name) {
+        alert('Por favor completa todos los campos.');
+        return;
+    }
+
     try {
-        const newUser = await API.apiRegister(username, matricula, email, password, name, 'alumno');
-        alert('Registro exitoso. Ahora inicia sesión.');
-        
-        // Limpiar formularios
+        await API.apiRegister(username, matricula, email, password, name, 'alumno');
         document.getElementById('registerForm').reset();
         document.getElementById('loginForm').reset();
-        
-        // Cambiar a tab de login
-        document.querySelector('.tab-button[data-tab="login"]').click();
+        showRegisterSuccessOverlay(name, username);
     } catch (error) {
         alert('Error: ' + error.message);
         console.error('Register error:', error);
@@ -1106,6 +1137,14 @@ document.querySelectorAll('.tab-button').forEach(btn => {
         document.getElementById(tab + 'Form').classList.add('active');
     });
 });
+
+const showAuthBtn = document.getElementById('showAuthBtn');
+if (showAuthBtn) {
+    showAuthBtn.addEventListener('click', () => {
+        document.getElementById('landingContainer').classList.add('hidden');
+        document.getElementById('authContainer').classList.remove('hidden');
+    });
+}
 
 document.querySelectorAll('.nav-button').forEach(btn => {
     btn.addEventListener('click', () => {

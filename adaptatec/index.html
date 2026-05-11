@@ -7,14 +7,76 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="icon" href="images/ADAPTATEC.jpeg" type="image/jpeg">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- API Client -->
     <script src="js/api.js" type="module"></script>
 </head>
 <body>
+    <!-- LANDING PAGE -->
+    <div id="landingContainer" class="landing-container">
+        <div class="landing-box">
+            <div class="landing-top">
+                <div class="landing-copy">
+                    <img src="images/ADAPTATEC.jpeg" alt="Adaptatec" class="landing-logo">
+                    <span class="landing-eyebrow">Portal educativo</span>
+                    <h1>Aprende, progresa y destaca con Adaptatec</h1>
+                    <p>Un espacio pensado para estudiantes que quieren ver su avance real, ganar recompensas y desarrollar su aprendizaje con herramientas fáciles e inteligentes.</p>
+                    <div class="landing-actions">
+                        <button id="showAuthBtn" class="btn btn-primary">Iniciar ahora</button>
+                    </div>
+                </div>
+                <div class="landing-media">
+                    <div class="hero-image">
+                        <img src="images/startupP.jpg" alt="Aprendizaje adaptativo" />
+                        <div class="hero-badge">📈 Mejora tu desempeño con seguimiento personalizado</div>
+                    </div>
+                    <div class="media-grid">
+                        <img src="images/startupstockphotos.jpg" alt="Estudiantes motivados" />
+                        <img src="images/stocksnap-people.jpg" alt="Trabajo colaborativo" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="landing-highlight">
+                <div class="highlight-card">
+                    <strong>Accede rápido</strong>
+                    <p>Inicia sesión con usuario o matrícula y comienza a explorar tu perfil.</p>
+                </div>
+                <div class="highlight-card">
+                    <strong>Seguimiento real</strong>
+                    <p>Visualiza tus logros, horas y progreso académico en un solo lugar.</p>
+                </div>
+                <div class="highlight-card">
+                    <strong>Recompensas motivadoras</strong>
+                    <p>Gana puntos y desbloquea insignias por tus avances.</p>
+                </div>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>📚 Aprendizaje personalizado</h3>
+                    <p>Recibe recomendaciones y seguimiento según tu rendimiento en cada materia.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🎯 Progreso visible</h3>
+                    <p>Controla tu avance con datos claros de puntos, logros y horas estudiadas.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🏆 Recompensas</h3>
+                    <p>Obtén motivación extra con logros y premios virtuales por tus avances.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>👥 Acceso rápido</h3>
+                    <p>Inicia sesión con usuario o matrícula, o regístrate como alumno en segundos.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- LOGIN MODAL -->
-    <div id="authContainer" class="auth-container">
+    <div id="authContainer" class="auth-container hidden">
         <div class="auth-box">
             <div class="auth-header">
                 <h1 class="logo">
@@ -46,12 +108,7 @@
                 <div class="form-group">
                     <label for="regMatricula">Matrícula:</label>
                     <input type="text" id="regMatricula" placeholder="Ej: 2024-IS-0001" required>
-                    <small class="helper-text">Ingresa tu matrícula institucional.</small>
-                </div>
-                <div class="form-group">
-                    <label for="regUsername">Usuario:</label>
-                    <input type="text" id="regUsername" placeholder="Ej: ALU002" required>
-                    <small class="helper-text">Comienza con ALU</small>
+                    <small class="helper-text">Ingresa tu matrícula institucional. El usuario se generará automáticamente como ALU + los últimos 4 dígitos.</small>
                 </div>
                 <div class="form-group">
                     <label for="regEmail">Email:</label>
@@ -70,6 +127,17 @@
 
             <div class="auth-footer">
                 <p class="demo-info">🔐 Usa tu usuario o matrícula y contraseña para iniciar sesión.</p>
+            </div>
+
+            <div id="registerSuccessOverlay" class="modal-overlay register-success-overlay">
+                <div class="modal-content-box">
+                    <div class="modal-header-box">
+                        <h2>Registro exitoso</h2>
+                    </div>
+                    <p class="overlay-message">¡Bienvenido, <span id="overlayName"></span>!</p>
+                    <p class="overlay-subtitle">Tu usuario generado es: <strong id="overlayUsername"></strong></p>
+                    <button type="button" class="btn btn-primary btn-block" id="closeRegisterOverlayBtn">Continuar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -97,7 +165,6 @@
                     <div class="admin-menu-section">
                         <div class="menu-section-title">👑 ADMINISTRACIÓN</div>
                         <button class="nav-button admin-only" data-view="general" style="display:none;">📊 General</button>
-                        <button class="nav-button admin-only" data-view="registrar-usuarios" style="display:none;">📝 Registrar Usuarios</button>
                         <button class="nav-button admin-only" data-view="monitoreo-alumnos" style="display:none;">📊 Monitoreo de Alumnos</button>
                         <button class="nav-button admin-only" data-view="admin-materias" style="display:none;">📚 Materias</button>
                         <button class="nav-button admin-only" data-view="miscelaneo" style="display:none;">🔧 Misceláneo</button>
@@ -385,51 +452,6 @@
                     </div>
                 </section>
 
-                <!-- VISTA: REGISTRAR USUARIOS -->
-                <section id="registrarUsuariosView" class="view">
-                    <div class="view-header">
-                        <h2>📝 Registrar Usuarios</h2>
-                        <p>Crea cuentas para alumnos o administradores del sistema</p>
-                    </div>
-                    
-                    <div class="register-user-form" style="background: #f8fafc; padding: 20px; border-radius: 16px;">
-                        <form id="adminRegisterUserForm" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                            <div class="form-group">
-                                <label>Nombre completo *</label>
-                                <input type="text" id="adminRegNombre" placeholder="Ej: María González" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Email *</label>
-                                <input type="email" id="adminRegEmail" placeholder="maria@ejemplo.com" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Usuario *</label>
-                                <input type="text" id="adminRegUsername" placeholder="Ej: ALU003" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Matrícula *</label>
-                                <input type="text" id="adminRegMatricula" placeholder="Ej: 2024-IS-0001" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Contraseña *</label>
-                                <input type="password" id="adminRegPassword" placeholder="Contraseña segura" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Rol *</label>
-                                <select id="adminRegRol" required>
-                                    <option value="alumno">Alumno</option>
-                                    <option value="admin">Administrador</option>
-                                </select>
-                            </div>
-                            <div class="form-group" style="grid-column: span 2;">
-                                <button type="submit" class="btn btn-primary">✅ Registrar Usuario</button>
-                            </div>
-                        </form>
-                    </div>
-                    <div id="registroMensaje" style="display: none; margin-top: 15px;"></div>
-                </section>
-
-                <!-- VISTA: MONITOREO DE ALUMNOS -->
                 <!-- VISTA: MONITOREO DE ALUMNOS -->
                 <section id="monitoreoAlumnosView" class="view">
                     <div class="view-header">

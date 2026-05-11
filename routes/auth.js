@@ -16,8 +16,8 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
-    if (password.length < 3) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 3 caracteres' });
+    if (password.length < 7) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 7 caracteres' });
     }
 
     // Verificar si el usuario ya existe

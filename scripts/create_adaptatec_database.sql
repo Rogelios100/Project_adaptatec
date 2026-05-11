@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   email VARCHAR(150) UNIQUE NOT NULL,
   name VARCHAR(150) NOT NULL,
-  role ENUM('alumno', 'docente', 'admin') NOT NULL DEFAULT 'alumno',
+  role ENUM('alumno', 'admin') NOT NULL DEFAULT 'alumno',
   nivel INT DEFAULT 1,
   puntos INT DEFAULT 0,
   logros INT DEFAULT 0,
@@ -198,7 +198,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- Solo usuario administrador de prueba
 INSERT IGNORE INTO users (matricula, username, password, email, name, role, nivel, puntos, logros, horas, tokens)
 VALUES
-  ('ADMIN-0001', 'ADMIN001', 'password_hash_example', 'admin@adaptatec.com', 'Admin Global', 'admin', 1, 0, 0, 0, 0);
+  ('ADMIN-0001', 'ADMIN001', '2026', 'admin@adaptatec.com', 'Admin Global', 'admin', 1, 0, 0, 0, 0);
 
 -- Objetivos de ejemplo
 INSERT IGNORE INTO objectives (clave, nombre, descripcion, tipo, objetivo, unidad, puntos) VALUES
