@@ -242,5 +242,13 @@
     "materia": 8,
     "responseTime": 2031,
     "statusCode": 200
+  },
+  {
+    "timestamp": "2026-05-20T18:04:12.872Z",
+    "type": "SUCCESS",
+    "pregunta": "Que es una sub consulta ?",
+    "materia": 3,
+    "responseTime": 1239,
+    "statusCode": 200
   }
 ]

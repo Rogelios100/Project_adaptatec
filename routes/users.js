@@ -157,41 +157,78 @@ router.post('/modulo-completado', verifyToken, async (req, res) => {
   try {
     const { materiaId, moduloId, moduloNombre } = req.body;
     const userId = req.user.id;
+    let moduloIdReal = Number(moduloId);
 
-    const existing = await get(
-      `SELECT id FROM modulo_progress WHERE userId = ? AND materiaId = ? AND moduloId = ?`,
-      [userId, materiaId, moduloId]
+    // Primero intentamos encontrar el módulo por su ID real
+    let modulo = await get(
+      `SELECT id, orden FROM modulos WHERE materiaId = ? AND id = ?`,
+      [materiaId, moduloIdReal]
     );
 
-    if (!existing) {
+    // Si no existe, interpretamos el valor recibido como índice 0-based y buscamos por orden
+    if (!modulo) {
+      modulo = await get(
+        `SELECT id, orden FROM modulos WHERE materiaId = ? AND orden = ?`,
+        [materiaId, moduloIdReal + 1]
+      );
+      if (modulo) {
+        moduloIdReal = modulo.id;
+      }
+    }
+
+    if (!modulo) {
+      return res.status(400).json({ error: 'Módulo no encontrado para la materia' });
+    }
+
+    const existing = await get(
+      `SELECT id, completado FROM modulo_progress WHERE userId = ? AND materiaId = ? AND moduloId = ?`,
+      [userId, materiaId, moduloIdReal]
+    );
+
+    if (existing) {
+      if (!existing.completado) {
+        await run(
+          `UPDATE modulo_progress SET completado = TRUE, fecha_completado = NOW() WHERE id = ?`,
+          [existing.id]
+        );
+      }
+    } else {
       await run(
         `INSERT INTO modulo_progress (userId, materiaId, moduloId, completado, fecha_completado)
          VALUES (?, ?, ?, TRUE, NOW())`,
-        [userId, materiaId, moduloId]
-      );
-
-      const completadosCount = await get(
-        `SELECT COUNT(*) as total FROM modulo_progress 
-         WHERE userId = ? AND materiaId = ? AND completado = TRUE`,
-        [userId, materiaId]
-      );
-
-      const materia = await get(`SELECT total_modulos FROM materias WHERE id = ?`, [materiaId]);
-      const totalModulos = materia?.total_modulos || 12;
-      const progress = Math.round((completadosCount.total / totalModulos) * 100);
-
-      await run(
-        `INSERT INTO user_progress (userId, materiaId, progress, modulosCompletados, lastAccessed)
-         VALUES (?, ?, ?, ?, NOW())
-         ON DUPLICATE KEY UPDATE 
-           progress = VALUES(progress),
-           modulosCompletados = VALUES(modulosCompletados),
-           lastAccessed = NOW()`,
-        [userId, materiaId, progress, completadosCount.total]
+        [userId, materiaId, moduloIdReal]
       );
     }
 
-    res.json({ success: true });
+    const completadosCount = await get(
+      `SELECT COUNT(*) as total FROM modulo_progress 
+       WHERE userId = ? AND materiaId = ? AND completado = TRUE`,
+      [userId, materiaId]
+    );
+
+    const materia = await get(`SELECT total_modulos FROM materias WHERE id = ?`, [materiaId]);
+    const totalModulos = materia?.total_modulos || 12;
+    const progress = Math.round((completadosCount.total / totalModulos) * 100);
+
+    await run(
+      `INSERT INTO user_progress (userId, materiaId, progress, modulosCompletados, totalModulos, lastAccessed)
+       VALUES (?, ?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE 
+         progress = VALUES(progress),
+         modulosCompletados = VALUES(modulosCompletados),
+         totalModulos = VALUES(totalModulos),
+         lastAccessed = NOW()`,
+      [userId, materiaId, progress, completadosCount.total, totalModulos]
+    );
+
+    await syncUserSummary(userId);
+
+    res.json({
+      success: true,
+      progress,
+      modulosCompletados: completadosCount.total,
+      alreadyCompleted: existing?.completado === true
+    });
   } catch (error) {
     console.error('Error guardando módulo completado:', error);
     res.status(500).json({ error: error.message });

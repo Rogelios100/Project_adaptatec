@@ -11,12 +11,13 @@ let respuestasUsuario = [];
 let examenGenerado = false;
 
 // ========== MÓDULOS INDEPENDIENTES ==========
-let modulosCompletadosMap = new Map(); // Guarda módulos completados por materiaId_moduloIndex
+let modulosCompletadosMap = new Map(); // Guarda módulos completados por materiaId_moduloId
 
 let recompensasObtenidas = new Set();
 
 let currentUser = null;
 let currentMateriaId = null;
+let currentModulos = [];
 
 // Gemini Configuration - Ahora se maneja en el backend
 // Ya no necesitamos API key en el frontend
@@ -362,6 +363,8 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
             // Convertir a formato de objeto
             modulos = modulos.map((nombre, idx) => ({ id: idx + 1, nombre: nombre, orden: idx + 1 }));
         }
+
+        currentModulos = modulos;
         
         // Calcular módulos completados de esta materia
         const completados = calcularModulosCompletadosMateria(materiaId);
@@ -384,17 +387,17 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
                 const estaCompletado = modulosCompletadosMap.get(`${materiaId}_${index}`) === true;
                 
                 return `
-                    <div class="modulo-card ${estaCompletado ? 'completado' : 'pendiente'}" data-modulo-index="${index}" data-materia-id="${materiaId}">
+                    <div class="modulo-card ${estaCompletado ? 'completado' : 'pendiente'}" data-modulo-index="${index}" data-modulo-id="${moduloId}" data-materia-id="${materiaId}">
                         <div class="modulo-info">
                             <h4>📖 ${moduloNombre}</h4>
                             <p>${estaCompletado ? '✅ Completado' : '📌 Por completar'}</p>
                         </div>
                         <div class="modulo-actions" style="display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end;">
                             ${!estaCompletado ? `
-                                <button class="btn-ver-modulo btn-small" data-modulo="${moduloNombre}" data-index="${index}" data-materia-id="${materiaId}">
+                                <button class="btn-ver-modulo btn-small" data-modulo="${moduloNombre}" data-index="${index}" data-modulo-id="${moduloId}" data-materia-id="${materiaId}">
                                     📖 Ver contenido
                                 </button>
-                                <button class="btn-examen-modulo btn-small" data-modulo="${moduloNombre}" data-index="${index}" data-materia-id="${materiaId}">
+                                <button class="btn-examen-modulo btn-small" data-modulo="${moduloNombre}" data-index="${index}" data-modulo-id="${moduloId}" data-materia-id="${materiaId}">
                                     📝 Hacer examen
                                 </button>
                             ` : `
@@ -1772,7 +1775,10 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
         return;
     }
     
-    console.log(`📝 Completando módulo: ${moduloNombre} (${moduloKey})`);
+    const modulo = currentModulos[moduloIndex];
+    const moduloId = modulo?.id ?? (moduloIndex + 1);
+    
+    console.log(`📝 Completando módulo: ${moduloNombre} (${moduloKey}) con moduleId real ${moduloId}`);
     
     // Obtener token
     const token = localStorage.getItem('adaptatec_token');
@@ -1787,13 +1793,14 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
             },
             body: JSON.stringify({
                 materiaId: materiaId,
-                moduloId: moduloIndex,
+                moduloId: moduloId,
                 moduloNombre: moduloNombre
             })
         });
         
+        const postResult = await response.json();
         if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
+            throw new Error(postResult.error || `Error HTTP: ${response.status}`);
         }
         
         // 2. Guardar en localStorage
@@ -1808,9 +1815,9 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
         // 3. Actualizar Map
         modulosCompletadosMap.set(moduloKey, true);
         
-        // 4. Calcular nuevo progreso
-        const nuevosCompletados = calcularModulosCompletadosMateria(materiaId);
-        const nuevoProgreso = Math.round((nuevosCompletados / materia.totalModulos) * 100);
+        // 4. Calcular nuevo progreso local
+        const nuevosCompletados = postResult.modulosCompletados ?? calcularModulosCompletadosMateria(materiaId);
+        const nuevoProgreso = postResult.progress ?? Math.round((nuevosCompletados / materia.totalModulos) * 100);
         
         // 5. Actualizar progreso en backend
         const progressResponse = await fetch(`/api/users/progress/${materiaId}`, {
@@ -1825,13 +1832,14 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
             })
         });
         
+        const progressResult = await progressResponse.json();
         if (!progressResponse.ok) {
-            console.warn('No se pudo actualizar el progreso:', await progressResponse.text());
+            throw new Error(progressResult.error || `Error HTTP: ${progressResponse.status}`);
         }
         
-        // 6. Actualizar localmente
-        materia.modulosCompletados = nuevosCompletados;
-        materia.progress = nuevoProgreso;
+        // 6. Actualizar localmente con datos confirmados del backend
+        materia.modulosCompletados = progressResult.modulosCompletados ?? nuevosCompletados;
+        materia.progress = progressResult.progress ?? nuevoProgreso;
         
         // 7. Registrar actividad
         await fetch('/api/users/activity', {

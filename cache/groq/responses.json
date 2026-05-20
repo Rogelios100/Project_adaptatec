@@ -138,5 +138,12 @@
     "materia": 8,
     "respuesta": "Hola, ¿en qué puedo ayudarte? ¿Tienes alguna duda o necesitas ayuda con algo específico relacionado con la materia de Ingeniería en Sistemas?",
     "timestamp": 1778472223231
+  },
+  {
+    "key": "cXVlIGVzIHVuYSBzdWIgY29uc3VsdGEgP3wz",
+    "pregunta": "Que es una sub consulta ?",
+    "materia": 3,
+    "respuesta": "En el contexto de la Ingeniería en Sistemas, una subconsulta es una consulta SQL que se utiliza dentro de otra consulta para obtener datos adicionales o realizar operaciones complejas.\n\nImagina que estás realizando una consulta para obtener la lista de empleados de una empresa, y necesitas obtener el nombre del departamento al que pertenece cada empleado. En este caso, podrías utilizar una subconsulta para obtener la lista de departamentos y luego unirla con la lista de empleados.\n\nAquí tienes un ejemplo de código SQL que ilustra esto:\n\n```sql\nSELECT e.nombre, d.nombre AS departamento\nFROM empleados e\nINNER JOIN (\n  SELECT id, nombre\n  FROM departamentos\n) d ON e.id_departamento = d.id;\n```\n\nEn este ejemplo, la subconsulta `(SELECT id, nombre FROM departamentos)` obtiene la lista de departamentos, y luego se utiliza para unir la lista de empleados con la lista de departamentos.\n\nLas subconsultas se pueden utilizar en diferentes tipos de consultas, como:\n\n* `SELECT`: para obtener datos de una tabla\n* `INSERT`: para insertar datos en una tabla\n* `UPDATE`: para actualizar datos en una tabla\n* `DELETE`: para eliminar datos de una tabla\n\nEs importante destacar que las subconsultas pueden afectar el rendimiento de la consulta, por lo que es importante utilizarlas de manera responsable y optimizarlas cuando sea posible.",
+    "timestamp": 1779300252869
   }
 ]
