@@ -1,10 +1,11 @@
 # Project_adaptatec
-Web page on school learning topics and AI assistance
+Web page on school learning topics and AI assistance with **Groq** for ultra-fast inference
+
 Descripción del Proyecto (Español):
 
-Adaptatec es una plataforma web diseñada para apoyar el aprendizaje académico mediante un agente de Inteligencia Artificial adaptativo, capaz de asistir al estudiante según la materia seleccionada, su nivel de conocimiento y su progreso.
+Adaptatec es una plataforma web diseñada para apoyar el aprendizaje académico mediante un agente de Inteligencia Artificial adaptativo potenciado por **Groq** API, capaz de asistir al estudiante según la materia seleccionada, su nivel de conocimiento y su progreso.
 
-El sistema no solo responde preguntas, sino que acompaña el proceso educativo, ajustando explicaciones, generando ejercicios y ofreciendo retroalimentación continua.
+El sistema no solo responde preguntas, sino que acompaña el proceso educativo, ajustando explicaciones, generando ejercicios y ofreciendo retroalimentación continua, todo con inferencia ultra-rápida.
 
 Objetivo:
 
@@ -15,7 +16,6 @@ Resolver dudas en tiempo real
 Practicar con ejercicios adaptativos
 Recibir explicaciones personalizadas
 Obtener recompensas por progreso
-*  Funcionalidades Principales
 * Selección de Materia
 
 El estudiante puede elegir una materia específica.
