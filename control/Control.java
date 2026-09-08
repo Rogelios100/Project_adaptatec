@@ -14,6 +14,8 @@ import main.ParserTokenManager;
 import main.SimpleCharStream;
 import main.Token;
 import ui.Ide;
+import main.ParseException;
+
 
 public class Control {
 	public void iniciarAplicacion() {
@@ -32,6 +34,7 @@ public class Control {
 						? Parser.descripcionErrorLexico(token) : "";
 				resultados.add(new ResultadoToken(id++, token.image, nombre, token.beginLine,
 						descripcion));
+				//System.out.println("kind=" + token.kind + " image='" + token.image + "' tokenImage=" + Parser.tokenImage[token.kind]);
 			}
 		}
 		return resultados;
@@ -55,26 +58,38 @@ public class Control {
 		guardarArchivo(archivo, salida.toString());
 	}
 
-	private String nombreToken(int kind) {
-		String[] nombresLiterales = {
-			"PARENTESIS_APERTURA", "PARENTESIS_CIERRE", "CORCHETE_APERTURA",
-			"CORCHETE_CIERRE", "LLAVE_APERTURA", "LLAVE_CIERRE", "PUNTO_Y_COMA",
-			"COMA", "PUNTO", "DOS_PUNTOS", "INTERROGACION"
-		};
-		int indiceLiteral = kind - ParserConstants.PARENTESIS_APERTURA;
-		if (indiceLiteral >= 0 && indiceLiteral < nombresLiterales.length) {
-			return nombresLiterales[indiceLiteral];
-		}
-		if (kind >= 0 && kind < Parser.tokenImage.length) {
-			String nombre = Parser.tokenImage[kind];
-			if (nombre.startsWith("<") && nombre.endsWith(">")) {
-				return nombre.substring(1, nombre.length() - 1);
+private String nombreToken(int kind) {
+	try {
+		for (java.lang.reflect.Field field : ParserConstants.class.getFields()) {
+			if (field.getType() == int.class && field.getInt(null) == kind) {
+				return field.getName();
 			}
 		}
-		return "ERROR_LEXICO";
-	}
+	} catch (IllegalAccessException ignored) { }
+	return "ERROR_LEXICO";
+}
 
 	public record ResultadoToken(int id, String lexema, String nombre, int linea, String descripcion) {
 		public boolean esError() { return "ERROR_LEXICO".equals(nombre); }
+	}
+
+	public record ResultadoSintactico(int linea, int columna, String mensaje) {}
+
+	public List<ResultadoSintactico> analizarSintactico(String codigo) {
+		List<ResultadoSintactico> errores = new ArrayList<>();
+		Parser parser = new Parser(new StringReader(codigo == null ? "" : codigo));
+		try {
+			parser.Inicio();
+		} catch (ParseException e) {
+			Token t = (e.currentToken != null && e.currentToken.next != null)
+					? e.currentToken.next : e.currentToken;
+			int linea = (t != null) ? t.beginLine : -1;
+			int columna = (t != null) ? t.beginColumn : -1;
+			errores.add(new ResultadoSintactico(linea, columna, e.getMessage()));
+		}
+		for (String[] err : parser.erroresSintacticos) {
+			errores.add(new ResultadoSintactico(Integer.parseInt(err[0]), Integer.parseInt(err[1]), err[2]));
+		}
+		return errores;
 	}
 }

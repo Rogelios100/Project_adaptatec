@@ -8,6 +8,26 @@ package main;
 
 @SuppressWarnings("all")
 public class Parser {
+  public java.util.List<String[]> erroresSintacticos = new java.util.ArrayList<>();
+
+  private void recuperarError(ParseException e) {
+      Token t = (e.currentToken != null && e.currentToken.next != null)
+              ? e.currentToken.next : e.currentToken;
+      int linea = (t != null) ? t.beginLine : -1;
+      int columna = (t != null) ? t.beginColumn : -1;
+      erroresSintacticos.add(new String[]{
+          String.valueOf(linea), String.valueOf(columna), e.getMessage()
+      });
+      // Modo pánico: saltar tokens hasta el próximo ';' o EOF
+      Token siguiente = getToken(1);
+      while (siguiente.kind != PUNTO_Y_COMA && siguiente.kind != EOF) {
+          getNextToken();
+          siguiente = getToken(1);
+      }
+      if (siguiente.kind == PUNTO_Y_COMA) {
+          getNextToken(); // consumir también el ';' para arrancar limpio la siguiente declaración
+      }
+  }
   public static String descripcionErrorLexico(Token token) {
     if (token != null && token.image != null
           && token.image.matches("([0-9]+\\.[0-9]*([\\.,][0-9]+)+|[0-9]+[eE][+-]?[0-9]+\\.[0-9]+|[0-9]+\\.[0-9]+(\\*|/|\\+|-)[0-9]+|[0-9]+\\.\\.[0-9]+)")) {
@@ -42,20 +62,27 @@ SKIP :
   | < COMENTARIO_BLOQUE: "/" "*" (~["*"] | "*" ~["/"])* "*" "/" >
 }
 
+//PALABRAS RESERVADAS
 TOKEN :
 {
-    < PALABRA_RESERVADA:
-        "break" | "case" | "catch" | "class" | "const" | "continue"
-      | "debugger" | "default" | "delete" | "do" | "else" | "enum"
-      | "export" | "extends" | "false" | "finally" | "for" | "function"
-      | "if" | "import" | "in" | "instanceof" | "new" | "null"
-      | "return" | "super" | "switch" | "this" | "throw" | "true"
-      | "try" | "typeof" | "var" | "void" | "while" | "with" | "let"
-      | "static" | "yield" | "await" | "interface" | "package"
-      | "private" | "protected" | "public" | "implements" | "any"
-      | "number" | "boolean" | "string" | "symbol" | "never"
-      | "unknown" | "undefined"
-    >
+    < BREAK: "break" > | < CASE: "case" > | < CATCH: "catch" > | < CLASS: "class" > | < CONST: "const" >
+  | < CONTINUE: "continue" > | < DEBUGGER: "debugger" > | < DEFA: "default" > | < DELETE: "delete" >
+  | < DO: "do" > | < ELSE: "else" > | < ENUM: "enum" > | < EXPORT: "export" > | < EXTENDS: "extends" >
+  | < FINALLY: "finally" > | < FOR: "for" > | < FUNCTION: "function" > | < IF: "if" >
+  | < IMPORT: "import" > | < IN: "in" > | < INSTANCEOF: "instanceof" > | < NEW: "new" >
+  | < RETURN: "return" > | < SUPER: "super" > | < SWITCH: "switch" > | < THIS: "this" >
+  | < THROW: "throw" > | < TRY: "try" > | < TYPEOF: "typeof" > | < VAR: "var" > | < VOID: "void" >
+  | < WHILE: "while" > | < WITH: "with" > | < LET: "let" > | < STATIC: "static" > | < YIELD: "yield" >
+  | < AWAIT: "await" > | < INTERFACE: "interface" > | < PACKAGE: "package" > | < PRIVATE: "private" >
+  | < PROTECTED: "protected" > | < PUBLIC: "public" > | < IMPLEMENTS: "implements" >
+  | < TRUE: "true" > | < FALSE: "false" >
+}
+
+TOKEN :
+{
+    < TIPO_ANY: "any" > | < TIPO_NUMBER: "number" > | < TIPO_BOOLEAN: "boolean" > 
+    | < TIPO_STRING: "string" > | < TIPO_SYMBOL: "symbol" > | < TIPO_NEVER: "never" > 
+    | < TIPO_UNKNOWN: "unknown" > | < TIPO_UNDEFINED: "undefined" >
 }
 
 TOKEN :
@@ -87,10 +114,16 @@ TOKEN :
 
 TOKEN :
 {
+    < INCREMENTO: "++" >
+  | < DECREMENTO: "--" >
+}
+
+TOKEN :
+{
     < OPERADOR_ASIGNACION: "**=" | "+=" | "-=" | "*=" | "/=" | "%=" | "=" >
   | < OPERADOR_COMPARACION: "===" | "!==" | "==" | "!=" | ">=" | "<=" | ">" | "<" >
   | < OPERADOR_LOGICO: "&&" | "||" | "!" >
-  | < OPERADOR_ARITMETICO: ">>>" | "<<" | ">>" | "++" | "--" | "**" | "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" | "~" >
+  | < OPERADOR_ARITMETICO: ">>>" | "<<" | ">>" | "**" | "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" | "~" >
 }
 
 TOKEN :
@@ -111,52 +144,185 @@ TOKEN :
 TOKEN :
 {
     < ERROR_LEXICO:
-    ("\"" (~["\"", "\r", "\n"])* )
-    | ("'" (~["'", "\r", "\n"])* )
-    | ("`" (~["`", "\r", "\n"])* )
-    | ("|" (["A"-"Z", "a"-"z", "_", "$"])
-      (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])* "|")
-    | ((["A"-"Z", "a"-"z", "_", "$"])
-      (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])*
-      ("#" | "+" | "-" | "*" | "/" | "%" | "=" | "!" | ">" | "<" | "&" | "|" | "^" | "~" | "?")
-      (~[" ", "\t", "\r", "\n"])* )
-    | ((["0"-"9"])+
-      ("|" | "+" | "-" | "*" | "/" | "%" | "=" | "!" | ">" | "<" | "&" | "^" | "~" | "?")
-      (~[" ", "\t", "\r", "\n"])* )
-    | ((["0"-"9"])+ ["e", "E"] ("+" | "-")? (["0"-"9"])+ "."
-      (["0"-"9"])+ (~[" ", "\t", "\r", "\n"])* )
-    | ((["A"-"Z", "a"-"z", "_", "$"])
+
+        // Identificador con carácter inválido en medio
+        ((["A"-"Z", "a"-"z", "_", "$"])
           (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])*
-          "?"
-          (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])+
-        )
-      | ("@" (["A"-"Z", "a"-"z", "_", "$"])
-          (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])*
-        )
-        | ("?" ("?")+ (~[" ", "\t", "\r", "\n"])* )
-        | ((["A"-"Z", "a"-"z", "_", "$"])
-          (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])*
-          (["+", "-", "*", "/", "%", "=", "!", ">", "<", "&", "|", "^", "~", "?"])
-          (["+", "-", "*", "/", "%", "=", "!", ">", "<", "&", "|", "^", "~", "?"])
-          (~[" ", "\t", "\r", "\n"])* )
-        | ((["0"-"9"])+ "."
-          (["A"-"Z", "a"-"z", "_", "$"])
-          (~[" ", "\t", "\r", "\n"])* )
-        | ((["0"-"9"])+ "." (["0"-"9"])*
-          ("." | ",") (["0"-"9"])+)
-        | ((["0"-"9"])+ (["A"-"Z", "a"-"z", "_", "$"])
+          ("@" | "#" | "?")
           (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])*)
-        | ((["0"-"9"])+ "." (["0"-"9"])*
-          ("." (["0"-"9"])+)+)
-          | ((["0"-"9"])+ "." (["0"-"9"])+
-            ("*" | "/" | "+" | "-") (["0"-"9"])+)
-        | ~[" ", "\t", "\r", "\n", "+", "-", "*", "/", "%", "=", "!",
-          ">", "<", "&", "|", "^", "~", "(", ")", "[", "]", "{", "}",
-          ";", ",", ".", ":", "?"]
+
+      | ("\"" (~["\"", "\r", "\n"])* )
+      | ("'" (~["'", "\r", "\n"])* )
+      | ("`" (~["`", "\r", "\n"])* )
+
+      | ("|" (["A"-"Z", "a"-"z", "_", "$"])
+        (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])* "|")
+
+      | ("@" (["A"-"Z", "a"-"z", "_", "$"])
+        (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])* )
+
+      | ("?" ("?")+)
+
+      | ((["0"-"9"])+ ["e", "E"] ("+" | "-")?
+        (["0"-"9"])+ "." (["0"-"9"])+)
+
+      | ((["0"-"9"])+ "."
+        (["A"-"Z", "a"-"z", "_", "$"])
+        (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])*)
+
+      | ((["0"-"9"])+ "." (["0"-"9"])*
+        ("." | ",") (["0"-"9"])+)
+
+      | ((["0"-"9"])+
+        (["A"-"Z", "a"-"z", "_", "$"])
+        (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])*)
+
+      | ((["0"-"9"])+ "." (["0"-"9"])*
+        ("." (["0"-"9"])+)+)
+
+      | ((["0"-"9"])+ "." (["0"-"9"])+
+        ("*" | "/" | "+" | "-")
+        (["0"-"9"])+)
     >
 }
 
 void Inicio() : {}
 {
+    {
+        while (getToken(1).kind != EOF) {
+            try {
+                Instruccion();
+            } catch (ParseException e) {
+                recuperarError(e);
+            }
+        }
+    }
     <EOF>
+}
+
+void VariableDeclaracion() : {}
+{
+    <LET> <IDENTIFICADOR>
+    [ <DOS_PUNTOS> Tipo() ]
+    [ <OPERADOR_ASIGNACION> Expresion() ]
+    <PUNTO_Y_COMA>
+}
+
+void Tipo() : {}
+{
+      <TIPO_NUMBER>
+    | <TIPO_STRING>
+    | <TIPO_BOOLEAN>
+    | <TIPO_ANY>
+}
+
+void Expresion() : {}
+{
+    ExpresionLogica()
+}
+
+void ExpresionLogica() : {}
+{
+    ExpresionRelacional() ( <OPERADOR_LOGICO> ExpresionRelacional() )*
+}
+
+void ExpresionRelacional() : {}
+{
+    ExpresionAritmetica() [ <OPERADOR_COMPARACION> ExpresionAritmetica() ]
+}
+
+void ExpresionAritmetica() : {}
+{
+    Valor() ( <OPERADOR_ARITMETICO> Valor() )*
+}
+
+void Valor() : {}
+{
+      ( <IDENTIFICADOR> [ <INCREMENTO> | <DECREMENTO> ] )
+    | <ENTERO>
+    | <DECIMAL>
+    | <CADENA>
+    | <TRUE>
+    | <FALSE>
+}
+
+void Instruccion() : {}
+{
+    Declaracion() | Sentencia()
+}
+
+void Declaracion() : {}
+{
+    VariableDeclaracion()
+}
+
+void Asignacion() : {}
+{
+    <IDENTIFICADOR>
+    <OPERADOR_ASIGNACION>
+    Expresion()
+    <PUNTO_Y_COMA>
+}
+
+void Sentencia() : {}
+{
+      LOOKAHEAD(2) Asignacion()
+    | LOOKAHEAD(2) IncrementoSentencia()
+    | LOOKAHEAD(2) LlamadaFuncion() <PUNTO_Y_COMA>
+    | IfSentencia()
+    | ForSentencia()
+    | WhileSentencia()
+    | Bloque()
+}
+
+void IncrementoSentencia() : {}
+{
+    <IDENTIFICADOR> ( <INCREMENTO> | <DECREMENTO> ) <PUNTO_Y_COMA>
+}
+
+void Bloque() : {}
+{
+    <LLAVE_APERTURA>
+    ( Declaracion() | Sentencia() )*
+    <LLAVE_CIERRE>
+}
+
+void LlamadaFuncion() : {}
+{
+    <IDENTIFICADOR> ( <PUNTO> <IDENTIFICADOR> )*
+    <PARENTESIS_APERTURA>
+    [ Expresion() ( <COMA> Expresion() )* ]
+    <PARENTESIS_CIERRE>
+}
+
+void IfSentencia() : {}
+{
+    <IF>
+    <PARENTESIS_APERTURA>
+    Expresion()
+    <PARENTESIS_CIERRE>
+    Bloque()
+    [ <ELSE> Bloque() ]
+}
+
+void ForInit() : {}
+{
+    <LET> <IDENTIFICADOR>
+    [ <DOS_PUNTOS> Tipo() ]
+    [ <OPERADOR_ASIGNACION> Expresion() ]
+}
+
+void ForSentencia() : {}
+{
+    <FOR> <PARENTESIS_APERTURA>
+    [ ForInit() ] <PUNTO_Y_COMA>
+    [ Expresion() ] <PUNTO_Y_COMA>
+    [ Expresion() ]
+    <PARENTESIS_CIERRE>
+    Sentencia()
+}
+
+void WhileSentencia() : {}
+{
+    <WHILE> <PARENTESIS_APERTURA> Expresion() <PARENTESIS_CIERRE> Sentencia()
 }
