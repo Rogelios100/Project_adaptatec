@@ -73,7 +73,7 @@ private String nombreToken(int kind) {
 		public boolean esError() { return "ERROR_LEXICO".equals(nombre); }
 	}
 
-	public record ResultadoSintactico(int linea, int columna, String mensaje) {}
+	public record ResultadoSintactico(int linea, String mensaje, String sintaxis) {}
 
 	public List<ResultadoSintactico> analizarSintactico(String codigo) {
 		List<ResultadoSintactico> errores = new ArrayList<>();
@@ -81,14 +81,12 @@ private String nombreToken(int kind) {
 		try {
 			parser.Inicio();
 		} catch (ParseException e) {
-			Token t = (e.currentToken != null && e.currentToken.next != null)
-					? e.currentToken.next : e.currentToken;
-			int linea = (t != null) ? t.beginLine : -1;
-			int columna = (t != null) ? t.beginColumn : -1;
-			errores.add(new ResultadoSintactico(linea, columna, e.getMessage()));
+			Token t = e.currentToken;
+			int linea = (t != null) ? t.endLine : -1;
+			errores.add(new ResultadoSintactico(linea, erroresS.mensajeError(e), erroresS.sintaxisEsperada(e)));
 		}
 		for (String[] err : parser.erroresSintacticos) {
-			errores.add(new ResultadoSintactico(Integer.parseInt(err[0]), Integer.parseInt(err[1]), err[2]));
+			errores.add(new ResultadoSintactico(Integer.parseInt(err[0]), err[1], err[2]));
 		}
 		return errores;
 	}

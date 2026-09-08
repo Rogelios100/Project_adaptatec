@@ -5,29 +5,42 @@ options {
 PARSER_BEGIN(Parser)
 
 package main;
+import control.erroresS;
 
 @SuppressWarnings("all")
 public class Parser {
-  public java.util.List<String[]> erroresSintacticos = new java.util.ArrayList<>();
 
-  private void recuperarError(ParseException e) {
-      Token t = (e.currentToken != null && e.currentToken.next != null)
-              ? e.currentToken.next : e.currentToken;
-      int linea = (t != null) ? t.beginLine : -1;
-      int columna = (t != null) ? t.beginColumn : -1;
-      erroresSintacticos.add(new String[]{
-          String.valueOf(linea), String.valueOf(columna), e.getMessage()
-      });
-      // Modo pánico: saltar tokens hasta el próximo ';' o EOF
-      Token siguiente = getToken(1);
-      while (siguiente.kind != PUNTO_Y_COMA && siguiente.kind != EOF) {
-          getNextToken();
-          siguiente = getToken(1);
-      }
-      if (siguiente.kind == PUNTO_Y_COMA) {
-          getNextToken(); // consumir también el ';' para arrancar limpio la siguiente declaración
-      }
-  }
+    public java.util.List<String[]> erroresSintacticos =
+            new java.util.ArrayList<>();
+
+private void recuperarError(ParseException e) {
+    Token t = e.currentToken;
+    int linea = (t != null) ? t.endLine : -1;
+    String mensaje = erroresS.mensajeError(e);
+    String sintaxis = erroresS.sintaxisEsperada(e);
+    erroresSintacticos.add(new String[]{ String.valueOf(linea), mensaje, sintaxis });
+
+    Token siguiente = getToken(1);
+    while (siguiente.kind != EOF
+            && siguiente.kind != PUNTO_Y_COMA
+            && siguiente.kind != LET
+            && siguiente.kind != IF
+            && siguiente.kind != FOR
+            && siguiente.kind != WHILE
+            && siguiente.kind != IDENTIFICADOR
+            && siguiente.kind != LLAVE_APERTURA
+            && siguiente.kind != LLAVE_CIERRE) {
+        getNextToken();
+        siguiente = getToken(1);
+    }
+
+    if (siguiente.kind == PUNTO_Y_COMA) {
+        getNextToken();
+    } else if (siguiente.kind == LLAVE_CIERRE) {
+        getNextToken();
+    }
+}
+
   public static String descripcionErrorLexico(Token token) {
     if (token != null && token.image != null
           && token.image.matches("([0-9]+\\.[0-9]*([\\.,][0-9]+)+|[0-9]+[eE][+-]?[0-9]+\\.[0-9]+|[0-9]+\\.[0-9]+(\\*|/|\\+|-)[0-9]+|[0-9]+\\.\\.[0-9]+)")) {
@@ -189,11 +202,19 @@ TOKEN :
 void Inicio() : {}
 {
     {
+        Token anterior;
         while (getToken(1).kind != EOF) {
+            anterior = getToken(1);
             try {
                 Instruccion();
             } catch (ParseException e) {
                 recuperarError(e);
+            }
+            // Seguro anti-bucle infinito: si tras un intento completo
+            // (parseo + recuperación) seguimos exactamente en el mismo token,
+            // forzamos avanzar uno para garantizar progreso siempre.
+            if (getToken(1) == anterior && getToken(1).kind != EOF) {
+                getNextToken();
             }
         }
     }

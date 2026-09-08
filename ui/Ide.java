@@ -60,7 +60,7 @@ public class Ide extends JFrame {
 	private final JLabel fileLabel = new JLabel("Sin archivo");
 	private final Control control;
 
-private final DefaultTableModel syntaxModel = new DefaultTableModel(new Object[] {"LÍNEA", "COLUMNA", "MENSAJE"}, 0) {
+private final DefaultTableModel syntaxModel = new DefaultTableModel(new Object[] {"LÍNEA", "MENSAJE", "SINTAXIS"}, 0) {
     @Override public boolean isCellEditable(int row, int column) { return false; }
 };
 private final JTable syntaxTable = new JTable(syntaxModel);
@@ -164,7 +164,16 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		editor.setMargin(new Insets(12, 14, 12, 14));
 		editor.setBackground(Color.WHITE);
 		editor.setCaretColor(NAVY);
+		editor.setSelectionColor(new Color(217, 240, 236));
+		editor.setSelectedTextColor(Color.BLACK);             
 		editor.setHighlighter(new DefaultHighlighter());
+		editor.addMouseListener(new java.awt.event.MouseAdapter() {
+			@Override public void mouseClicked(java.awt.event.MouseEvent e) {
+				if (e.getClickCount() == 2) {
+					SwingUtilities.invokeLater(() -> seleccionarPalabra(editor.getCaretPosition()));
+				}
+			}
+		});
 		lineNumbers = new LineNumbers(editor);
 		editorPanel.add(new LineNumberScrollPane(editor, lineNumbers), BorderLayout.CENTER);
 
@@ -350,7 +359,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 
 			resultadosSintacticos = control.analizarSintactico(editor.getText());
 			for (Control.ResultadoSintactico e : resultadosSintacticos) {
-				syntaxModel.addRow(new Object[] {e.linea(), e.columna(), e.mensaje()});
+				syntaxModel.addRow(new Object[] {e.linea(), e.mensaje(), e.sintaxis()});
 			}
 			if (resultadosSintacticos.isEmpty()) {
 				appendConsole("Análisis sintáctico correcto.");
@@ -484,6 +493,30 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	private void showError(String message) {
 		appendConsole(message);
 		JOptionPane.showMessageDialog(this, message, "TypeTec", JOptionPane.ERROR_MESSAGE);
+	}
+
+	private boolean esCaracterIdentificador(char c) {
+		return Character.isLetterOrDigit(c) || c == '_' || c == '$';
+	}
+
+	private void seleccionarPalabra(int posicion) {
+		try {
+			javax.swing.text.Document doc = editor.getDocument();
+			String texto = doc.getText(0, doc.getLength());
+			if (posicion < 0 || posicion > texto.length()) return;
+
+			boolean derechaEsPalabra = posicion < texto.length() && esCaracterIdentificador(texto.charAt(posicion));
+			boolean izquierdaEsPalabra = posicion > 0 && esCaracterIdentificador(texto.charAt(posicion - 1));
+			if (!derechaEsPalabra && !izquierdaEsPalabra) return; // clic en espacio o símbolo: no seleccionar nada
+
+			int centro = derechaEsPalabra ? posicion : posicion - 1;
+			int inicio = centro;
+			while (inicio > 0 && esCaracterIdentificador(texto.charAt(inicio - 1))) inicio--;
+			int fin = centro + 1;
+			while (fin < texto.length() && esCaracterIdentificador(texto.charAt(fin))) fin++;
+
+			editor.select(inicio, fin);
+		} catch (BadLocationException ignored) { }
 	}
 
 	public static void mostrar(Control control) {
