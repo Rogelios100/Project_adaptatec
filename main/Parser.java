@@ -510,44 +510,7 @@ while (getToken(1).kind != EOF) {
     finally { jj_save(2, xla); }
   }
 
-  private boolean jj_3_3()
- {
-    if (jj_3R_LlamadaFuncion_297_5_8()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_Asignacion_266_5_6()
- {
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    if (jj_scan_token(OPERADOR_ASIGNACION)) return true;
-    return false;
-  }
-
-  private boolean jj_3_2()
- {
-    if (jj_3R_IncrementoSentencia_285_5_7()) return true;
-    return false;
-  }
-
-  private boolean jj_3_1()
- {
-    if (jj_3R_Asignacion_266_5_6()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_LlamadaFuncion_297_5_8()
- {
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    Token xsp;
-    while (true) {
-      xsp = jj_scanpos;
-      if (jj_3R_LlamadaFuncion_297_23_9()) { jj_scanpos = xsp; break; }
-    }
-    if (jj_scan_token(PARENTESIS_APERTURA)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_IncrementoSentencia_285_5_7()
+  private boolean jj_3R_IncrementoSentencia_280_5_7()
  {
     if (jj_scan_token(IDENTIFICADOR)) return true;
     Token xsp;
@@ -559,9 +522,46 @@ while (getToken(1).kind != EOF) {
     return false;
   }
 
-  private boolean jj_3R_LlamadaFuncion_297_23_9()
+  private boolean jj_3R_LlamadaFuncion_292_23_9()
  {
     if (jj_scan_token(PUNTO)) return true;
+    return false;
+  }
+
+  private boolean jj_3_3()
+ {
+    if (jj_3R_LlamadaFuncion_292_5_8()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_Asignacion_261_5_6()
+ {
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    if (jj_scan_token(OPERADOR_ASIGNACION)) return true;
+    return false;
+  }
+
+  private boolean jj_3_2()
+ {
+    if (jj_3R_IncrementoSentencia_280_5_7()) return true;
+    return false;
+  }
+
+  private boolean jj_3_1()
+ {
+    if (jj_3R_Asignacion_261_5_6()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_LlamadaFuncion_292_5_8()
+ {
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    Token xsp;
+    while (true) {
+      xsp = jj_scanpos;
+      if (jj_3R_LlamadaFuncion_292_23_9()) { jj_scanpos = xsp; break; }
+    }
+    if (jj_scan_token(PARENTESIS_APERTURA)) return true;
     return false;
   }
 
