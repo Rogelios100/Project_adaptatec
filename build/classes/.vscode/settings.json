@@ -1,0 +1,13 @@
+{
+    "java.project.sourcePaths": [
+        "."
+    ],
+    "java.project.exclusionPatterns": [
+        "**/build/**"
+    ],
+    "java.project.outputPath": "build/classes",
+    "java.project.referencedLibraries": [
+        "resources/*.jar",
+        "build/classes"
+    ]
+}
