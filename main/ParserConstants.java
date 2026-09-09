@@ -105,73 +105,77 @@ public interface ParserConstants {
   /** RegularExpression Id. */
   int FALSE = 51;
   /** RegularExpression Id. */
-  int TIPO_ANY = 52;
+  int OF = 52;
   /** RegularExpression Id. */
-  int TIPO_NUMBER = 53;
+  int FLECHA = 53;
   /** RegularExpression Id. */
-  int TIPO_BOOLEAN = 54;
+  int TIPO_ANY = 54;
   /** RegularExpression Id. */
-  int TIPO_STRING = 55;
+  int TIPO_NUMBER = 55;
   /** RegularExpression Id. */
-  int TIPO_SYMBOL = 56;
+  int TIPO_BOOLEAN = 56;
   /** RegularExpression Id. */
-  int TIPO_NEVER = 57;
+  int TIPO_STRING = 57;
   /** RegularExpression Id. */
-  int TIPO_UNKNOWN = 58;
+  int TIPO_SYMBOL = 58;
   /** RegularExpression Id. */
-  int TIPO_UNDEFINED = 59;
+  int TIPO_NEVER = 59;
   /** RegularExpression Id. */
-  int IDENTIFICADOR = 60;
+  int TIPO_UNKNOWN = 60;
   /** RegularExpression Id. */
-  int HEXADECIMAL = 61;
+  int TIPO_UNDEFINED = 61;
   /** RegularExpression Id. */
-  int BINARIO = 62;
+  int IDENTIFICADOR = 62;
   /** RegularExpression Id. */
-  int OCTAL = 63;
+  int HEXADECIMAL = 63;
   /** RegularExpression Id. */
-  int EXPONENCIAL = 64;
+  int BINARIO = 64;
   /** RegularExpression Id. */
-  int DECIMAL = 65;
+  int OCTAL = 65;
   /** RegularExpression Id. */
-  int ENTERO = 66;
+  int EXPONENCIAL = 66;
   /** RegularExpression Id. */
-  int CADENA = 67;
+  int DECIMAL = 67;
   /** RegularExpression Id. */
-  int INCREMENTO = 68;
+  int ENTERO = 68;
   /** RegularExpression Id. */
-  int DECREMENTO = 69;
+  int CADENA = 69;
   /** RegularExpression Id. */
-  int OPERADOR_ASIGNACION = 70;
+  int INCREMENTO = 70;
   /** RegularExpression Id. */
-  int OPERADOR_COMPARACION = 71;
+  int DECREMENTO = 71;
   /** RegularExpression Id. */
-  int OPERADOR_LOGICO = 72;
+  int OPERADOR_ASIGNACION = 72;
   /** RegularExpression Id. */
-  int OPERADOR_ARITMETICO = 73;
+  int OPERADOR_COMPARACION = 73;
   /** RegularExpression Id. */
-  int PARENTESIS_APERTURA = 74;
+  int OPERADOR_LOGICO = 74;
   /** RegularExpression Id. */
-  int PARENTESIS_CIERRE = 75;
+  int OPERADOR_ARITMETICO = 75;
   /** RegularExpression Id. */
-  int CORCHETE_APERTURA = 76;
+  int PARENTESIS_APERTURA = 76;
   /** RegularExpression Id. */
-  int CORCHETE_CIERRE = 77;
+  int PARENTESIS_CIERRE = 77;
   /** RegularExpression Id. */
-  int LLAVE_APERTURA = 78;
+  int CORCHETE_APERTURA = 78;
   /** RegularExpression Id. */
-  int LLAVE_CIERRE = 79;
+  int CORCHETE_CIERRE = 79;
   /** RegularExpression Id. */
-  int PUNTO_Y_COMA = 80;
+  int LLAVE_APERTURA = 80;
   /** RegularExpression Id. */
-  int COMA = 81;
+  int LLAVE_CIERRE = 81;
   /** RegularExpression Id. */
-  int PUNTO = 82;
+  int PUNTO_Y_COMA = 82;
   /** RegularExpression Id. */
-  int DOS_PUNTOS = 83;
+  int COMA = 83;
   /** RegularExpression Id. */
-  int INTERROGACION = 84;
+  int PUNTO = 84;
   /** RegularExpression Id. */
-  int ERROR_LEXICO = 85;
+  int DOS_PUNTOS = 85;
+  /** RegularExpression Id. */
+  int INTERROGACION = 86;
+  /** RegularExpression Id. */
+  int ERROR_LEXICO = 87;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -230,6 +234,8 @@ public interface ParserConstants {
     "\"implements\"",
     "\"true\"",
     "\"false\"",
+    "\"of\"",
+    "\"=>\"",
     "\"any\"",
     "\"number\"",
     "\"boolean\"",

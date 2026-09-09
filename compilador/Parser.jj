@@ -13,21 +13,29 @@ public class Parser {
     public java.util.List<String[]> erroresSintacticos =
             new java.util.ArrayList<>();
 
+private void registrarError(ParseException e) {
+  Token encontrado = getToken(1);
+  int linea = encontrado != null ? encontrado.beginLine : -1;
+  int columna = encontrado != null ? encontrado.beginColumn : -1;
+  String lexema = encontrado != null ? encontrado.image : "fin de archivo";
+  erroresSintacticos.add(new String[]{String.valueOf(linea), String.valueOf(columna),
+      lexema, erroresS.tokensEsperados(e), erroresS.descripcionAmigable(e, encontrado)});
+}
+
 private void recuperarError(ParseException e) {
-    Token t = e.currentToken;
-    int linea = (t != null) ? t.endLine : -1;
-    String mensaje = erroresS.mensajeError(e);
-    String sintaxis = erroresS.sintaxisEsperada(e);
-    erroresSintacticos.add(new String[]{ String.valueOf(linea), mensaje, sintaxis });
+  registrarError(e);
+  Token anterior = getToken(1);
 
     Token siguiente = getToken(1);
     while (siguiente.kind != EOF
             && siguiente.kind != PUNTO_Y_COMA
             && siguiente.kind != LET
+            && siguiente.kind != CONST
+            && siguiente.kind != VAR
             && siguiente.kind != IF
             && siguiente.kind != FOR
+            && siguiente.kind != FUNCTION
             && siguiente.kind != WHILE
-            && siguiente.kind != IDENTIFICADOR
             && siguiente.kind != LLAVE_APERTURA
             && siguiente.kind != LLAVE_CIERRE) {
         getNextToken();
@@ -39,6 +47,33 @@ private void recuperarError(ParseException e) {
     } else if (siguiente.kind == LLAVE_CIERRE) {
         getNextToken();
     }
+    if (getToken(1) == anterior && getToken(1).kind != EOF) {
+      getNextToken();
+    }
+}
+
+private boolean siguienteEsFlecha() {
+  if (getToken(1).kind != PARENTESIS_APERTURA) return false;
+  int profundidad = 0;
+  for (int posicion = 1; posicion < 256; posicion++) {
+    int kind = getToken(posicion).kind;
+    if (kind == PARENTESIS_APERTURA) profundidad++;
+    if (kind == PARENTESIS_CIERRE) {
+      profundidad--;
+      if (profundidad == 0) return getToken(posicion + 1).kind == FLECHA;
+    }
+    if (kind == EOF) return false;
+  }
+  return false;
+}
+
+private boolean siguienteEsForOf() {
+  for (int posicion = 1; posicion < 256; posicion++) {
+    int kind = getToken(posicion).kind;
+    if (kind == OF || kind == IN) return true;
+    if (kind == PUNTO_Y_COMA || kind == PARENTESIS_CIERRE || kind == EOF) return false;
+  }
+  return false;
 }
 
   public static String descripcionErrorLexico(Token token) {
@@ -88,7 +123,12 @@ TOKEN :
   | < WHILE: "while" > | < WITH: "with" > | < LET: "let" > | < STATIC: "static" > | < YIELD: "yield" >
   | < AWAIT: "await" > | < INTERFACE: "interface" > | < PACKAGE: "package" > | < PRIVATE: "private" >
   | < PROTECTED: "protected" > | < PUBLIC: "public" > | < IMPLEMENTS: "implements" >
-  | < TRUE: "true" > | < FALSE: "false" >
+  | < TRUE: "true" > | < FALSE: "false" > | < OF: "of" >
+}
+
+TOKEN :
+{
+    < FLECHA: "=>" >
 }
 
 TOKEN :
@@ -223,127 +263,189 @@ void Inicio() : {}
 
 void VariableDeclaracion() : {}
 {
-    <LET> <IDENTIFICADOR>
-    [ <DOS_PUNTOS> Tipo() ]
-    [ <OPERADOR_ASIGNACION> Expresion() ]
-    <PUNTO_Y_COMA>
+  (<LET> | <CONST> | <VAR>) <IDENTIFICADOR>
+  [ <DOS_PUNTOS> Tipo() ] [ <OPERADOR_ASIGNACION> Expresion() ]
+  <PUNTO_Y_COMA>
 }
 
 void Tipo() : {}
 {
-      <TIPO_NUMBER>
-    | <TIPO_STRING>
-    | <TIPO_BOOLEAN>
-    | <TIPO_ANY>
+  TipoBase() ( <CORCHETE_APERTURA> <CORCHETE_CIERRE> )*
+  | <CORCHETE_APERTURA> [ Tipo() ( <COMA> Tipo() )* ] <CORCHETE_CIERRE>
+}
+
+void TipoBase() : {}
+{
+    <TIPO_NUMBER> | <TIPO_STRING> | <TIPO_BOOLEAN> | <TIPO_ANY>
+  | <TIPO_UNKNOWN> | <TIPO_NEVER> | <TIPO_UNDEFINED> | <VOID>
+  | <IDENTIFICADOR>
 }
 
 void Expresion() : {}
 {
-    ExpresionLogica()
+  ExpresionAsignacion()
+}
+
+void ExpresionAsignacion() : {}
+{
+  ExpresionTernaria()
+  [ <OPERADOR_ASIGNACION> ExpresionAsignacion() ]
+}
+
+void ExpresionTernaria() : {}
+{
+  ExpresionLogica() [ <INTERROGACION> Expresion() <DOS_PUNTOS> Expresion() ]
 }
 
 void ExpresionLogica() : {}
 {
-    ExpresionRelacional() ( <OPERADOR_LOGICO> ExpresionRelacional() )*
+  ExpresionRelacional() ( <OPERADOR_LOGICO> ExpresionRelacional() )*
 }
 
 void ExpresionRelacional() : {}
 {
-    ExpresionAritmetica() [ <OPERADOR_COMPARACION> ExpresionAritmetica() ]
+  ExpresionAritmetica() ( <OPERADOR_COMPARACION> ExpresionAritmetica() )*
 }
 
 void ExpresionAritmetica() : {}
 {
-    Valor() ( <OPERADOR_ARITMETICO> Valor() )*
+  Factor() ( <OPERADOR_ARITMETICO> Factor() )*
+}
+
+void Factor() : {}
+{
+  [ <OPERADOR_LOGICO> | <OPERADOR_ARITMETICO> ] Valor()
 }
 
 void Valor() : {}
 {
-      ( <IDENTIFICADOR> [ <INCREMENTO> | <DECREMENTO> ] )
-    | <ENTERO>
-    | <DECIMAL>
-    | <CADENA>
-    | <TRUE>
-    | <FALSE>
+    LOOKAHEAD( {siguienteEsFlecha()} ) FlechaFuncion()
+  | LOOKAHEAD(2) <IDENTIFICADOR> <FLECHA> Expresion()
+  | Primario() [ <INCREMENTO> | <DECREMENTO> ]
+}
+
+void Primario() : {}
+{
+    <IDENTIFICADOR> ( <PUNTO> <IDENTIFICADOR> | LlamadaArgumentos() | AccesoArreglo() )*
+  | <ENTERO> | <DECIMAL> | <EXPONENCIAL> | <HEXADECIMAL> | <BINARIO> | <OCTAL>
+  | <CADENA> | <TRUE> | <FALSE> | ArregloLiteral() | ObjetoLiteral()
+  | <PARENTESIS_APERTURA> Expresion() <PARENTESIS_CIERRE>
+}
+
+void LlamadaArgumentos() : {}
+{
+  <PARENTESIS_APERTURA> [ Expresion() ( <COMA> Expresion() )* ] <PARENTESIS_CIERRE>
+}
+
+void AccesoArreglo() : {}
+{
+  <CORCHETE_APERTURA> Expresion() <CORCHETE_CIERRE>
+}
+
+void ArregloLiteral() : {}
+{
+  <CORCHETE_APERTURA> [ Expresion() ( <COMA> Expresion() )* ] <CORCHETE_CIERRE>
+}
+
+void ObjetoLiteral() : {}
+{
+  <LLAVE_APERTURA> [ PropiedadObjeto() ( <COMA> PropiedadObjeto() )* [ <COMA> ] ] <LLAVE_CIERRE>
+}
+
+void PropiedadObjeto() : {}
+{
+  ( <IDENTIFICADOR> | <CADENA> ) [ <DOS_PUNTOS> Expresion() ]
+}
+
+void FlechaFuncion() : {}
+{
+  <PARENTESIS_APERTURA> [ Parametro() ( <COMA> Parametro() )* ] <PARENTESIS_CIERRE>
+  <FLECHA> ( Bloque() | Expresion() )
+}
+
+void Parametro() : {}
+{
+  <IDENTIFICADOR> [ <DOS_PUNTOS> Tipo() ]
 }
 
 void Instruccion() : {}
 {
-    Declaracion() | Sentencia()
+  Declaracion() | FuncionDeclaracion() | Sentencia()
 }
 
 void Declaracion() : {}
 {
-    VariableDeclaracion()
+  VariableDeclaracion()
 }
 
 void Asignacion() : {}
 {
-    <IDENTIFICADOR>
-    <OPERADOR_ASIGNACION>
-    Expresion()
-    <PUNTO_Y_COMA>
+  <IDENTIFICADOR> ( <PUNTO> <IDENTIFICADOR> )*
+  <OPERADOR_ASIGNACION> Expresion() <PUNTO_Y_COMA>
 }
 
 void Sentencia() : {}
 {
-      LOOKAHEAD(2) Asignacion()
-    | LOOKAHEAD(2) IncrementoSentencia()
-    | LOOKAHEAD(2) LlamadaFuncion() <PUNTO_Y_COMA>
-    | IfSentencia()
-    | ForSentencia()
-    | WhileSentencia()
-    | Bloque()
+      LOOKAHEAD(5) Asignacion()
+    | LOOKAHEAD(3) IncrementoSentencia()
+    | LOOKAHEAD(4) LlamadaFuncion() <PUNTO_Y_COMA>
+  | IfSentencia() | ForSentencia() | WhileSentencia()
+  | ReturnSentencia() | Bloque()
 }
 
 void IncrementoSentencia() : {}
 {
-    <IDENTIFICADOR> ( <INCREMENTO> | <DECREMENTO> ) <PUNTO_Y_COMA>
+  <IDENTIFICADOR> ( <INCREMENTO> | <DECREMENTO> ) <PUNTO_Y_COMA>
+}
+
+void IncrementoSentenciaSinPunto() : {}
+{
+  <IDENTIFICADOR> ( <INCREMENTO> | <DECREMENTO> )
 }
 
 void Bloque() : {}
 {
-    <LLAVE_APERTURA>
-    ( Declaracion() | Sentencia() )*
-    <LLAVE_CIERRE>
+  <LLAVE_APERTURA> ( Instruccion() )* <LLAVE_CIERRE>
 }
 
 void LlamadaFuncion() : {}
 {
-    <IDENTIFICADOR> ( <PUNTO> <IDENTIFICADOR> )*
-    <PARENTESIS_APERTURA>
-    [ Expresion() ( <COMA> Expresion() )* ]
-    <PARENTESIS_CIERRE>
+  <IDENTIFICADOR> ( <PUNTO> <IDENTIFICADOR> )* LlamadaArgumentos()
+}
+
+void FuncionDeclaracion() : {}
+{
+  <FUNCTION> <IDENTIFICADOR> <PARENTESIS_APERTURA>
+  [ Parametro() ( <COMA> Parametro() )* ] <PARENTESIS_CIERRE>
+  [ <DOS_PUNTOS> Tipo() ] Bloque()
+}
+
+void ReturnSentencia() : {}
+{
+  <RETURN> [ Expresion() ] <PUNTO_Y_COMA>
 }
 
 void IfSentencia() : {}
 {
-    <IF>
-    <PARENTESIS_APERTURA>
-    Expresion()
-    <PARENTESIS_CIERRE>
-    Bloque()
-    [ <ELSE> Bloque() ]
+  <IF> <PARENTESIS_APERTURA> Expresion() <PARENTESIS_CIERRE>
+  Bloque() [ <ELSE> ( IfSentencia() | Bloque() ) ]
 }
 
 void ForInit() : {}
 {
-    <LET> <IDENTIFICADOR>
-    [ <DOS_PUNTOS> Tipo() ]
-    [ <OPERADOR_ASIGNACION> Expresion() ]
+  (<LET> | <CONST> | <VAR>) <IDENTIFICADOR>
+  [ <DOS_PUNTOS> Tipo() ] [ <OPERADOR_ASIGNACION> Expresion() ]
 }
 
 void ForSentencia() : {}
 {
-    <FOR> <PARENTESIS_APERTURA>
-    [ ForInit() ] <PUNTO_Y_COMA>
-    [ Expresion() ] <PUNTO_Y_COMA>
-    [ Expresion() ]
-    <PARENTESIS_CIERRE>
-    Sentencia()
+  <FOR> <PARENTESIS_APERTURA>
+  ( LOOKAHEAD( {siguienteEsForOf()} ) ForInit() ( <OF> | <IN> ) Expresion()
+  | [ ForInit() ] <PUNTO_Y_COMA> [ Expresion() ] <PUNTO_Y_COMA> [ Expresion() ] )
+  <PARENTESIS_CIERRE> Sentencia()
 }
 
 void WhileSentencia() : {}
 {
-    <WHILE> <PARENTESIS_APERTURA> Expresion() <PARENTESIS_CIERRE> Sentencia()
+  <WHILE> <PARENTESIS_APERTURA> Expresion() <PARENTESIS_CIERRE> Sentencia()
 }

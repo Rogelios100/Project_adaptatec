@@ -1,10 +1,11 @@
 package control;
 
-import main.ParseException;
-import main.ParserConstants;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import main.ParseException;
+import main.ParserConstants;
+import main.Token;
 
 public class erroresS {
 
@@ -96,5 +97,32 @@ public class erroresS {
         String nombre = tokenEsperadoPrincipal(e);
         if (nombre == null) return "";
         return EJEMPLOS.getOrDefault(nombre, "");
+    }
+
+    public static String tokensEsperados(ParseException e) {
+        if (e == null || e.expectedTokenSequences == null) return "";
+        LinkedHashSet<String> nombres = new LinkedHashSet<>();
+        for (int[] secuencia : e.expectedTokenSequences) {
+            if (secuencia.length == 0) continue;
+            String nombre = nombreDeKind(secuencia[0]);
+            if (nombre != null) nombres.add(nombre);
+        }
+        return String.join(", ", nombres);
+    }
+
+    public static String descripcionAmigable(ParseException e, Token encontrado) {
+        String token = encontrado == null || encontrado.kind == ParserConstants.EOF
+                ? "el fin del archivo" : "el token '" + encontrado.image + "'";
+        String esperado = tokensEsperados(e);
+        if (esperado.contains("PUNTO_Y_COMA")) {
+            return "Se esperaba terminar la instrucción con punto y coma.";
+        }
+        if (esperado.contains("LLAVE_APERTURA")) {
+            return "Se esperaba abrir un bloque con '{'.";
+        }
+        if (esperado.contains("LLAVE_CIERRE")) {
+            return "Se esperaba cerrar el bloque con '}'.";
+        }
+        return "No se esperaba " + token + " en este punto de la instrucción.";
     }
 }

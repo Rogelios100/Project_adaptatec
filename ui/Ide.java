@@ -42,6 +42,9 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 
 public class Ide extends JFrame {
 	private static final Color NAVY = new Color(31, 41, 55);
@@ -60,7 +63,7 @@ public class Ide extends JFrame {
 	private final JLabel fileLabel = new JLabel("Sin archivo");
 	private final Control control;
 
-private final DefaultTableModel syntaxModel = new DefaultTableModel(new Object[] {"LÍNEA", "MENSAJE", "SINTAXIS"}, 0) {
+private final DefaultTableModel syntaxModel = new DefaultTableModel(new Object[] {"LÍNEA", "COLUMNA", "ENCONTRADO", "ESPERADOS", "DESCRIPCIÓN"}, 0) {
     @Override public boolean isCellEditable(int row, int column) { return false; }
 };
 private final JTable syntaxTable = new JTable(syntaxModel);
@@ -71,6 +74,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	private LineNumbers lineNumbers;
 	private File currentFile;
 	private boolean dirty;
+	private JTabbedPane analysisTabs;
 
 	public Ide() {
 		this(new Control());
@@ -104,6 +108,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		setMinimumSize(new Dimension(980, 640));
 		setSize(1200, 800);
 		setLocationRelativeTo(null);
+		setExtendedState(JFrame.MAXIMIZED_BOTH);
 		getContentPane().setBackground(PANEL);
 	}
 
@@ -114,7 +119,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		file.add(menuItem("Abrir...", e -> openFile()));
 		file.addSeparator();
 		file.add(menuItem("Guardar", e -> saveFile(false)));
-		file.add(menuItem("Guardar como...", e -> saveFile(true)));
+		file.add(menuItem("Guardar como", e -> saveFile(true)));
 		file.addSeparator();
 		file.add(menuItem("Salir", e -> exit()));
 		menuBar.add(file);
@@ -179,26 +184,35 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 
 		JPanel analysis = createAnalysisPanel();
 		JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, editorPanel, analysis);
-		split.setResizeWeight(.68);
+		split.setResizeWeight(.75);
 		split.setDividerSize(6);
 		split.setBorder(null);
 
 		JPanel consolePanel = new JPanel(new BorderLayout(0, 5));
-		consolePanel.setBorder(new EmptyBorder(8, 12, 10, 12));
+		consolePanel.setBorder(new EmptyBorder(8, 12, 8, 12));
 		consolePanel.setBackground(PANEL);
-		consolePanel.add(sectionTitle("CONSOLA"), BorderLayout.NORTH);
+		JPanel consoleHeading = new JPanel(new BorderLayout());
+		consoleHeading.setOpaque(false);
+		consoleHeading.add(sectionTitle("CONSOLA"), BorderLayout.WEST);
+		consoleHeading.add(toolButton("Limpiar Consola", e -> limpiarConsola()), BorderLayout.EAST);
+		consolePanel.add(consoleHeading, BorderLayout.NORTH);
 		console.setEditable(false);
-		console.setRows(4);
+		console.setRows(8);
 		console.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
 		console.setForeground(new Color(51, 65, 85));
 		console.setBackground(Color.WHITE);
 		console.setBorder(new EmptyBorder(8, 10, 8, 10));
-		consolePanel.add(new JScrollPane(console), BorderLayout.CENTER);
+		JScrollPane consoleScroll = new JScrollPane(console);
+		consoleScroll.setPreferredSize(new Dimension(0, 190));
+		consolePanel.add(consoleScroll, BorderLayout.CENTER);
 
+		JSplitPane workspaceSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, split, consolePanel);
+		workspaceSplit.setResizeWeight(.72);
+		workspaceSplit.setDividerSize(6);
+		workspaceSplit.setBorder(null);
 		JPanel center = new JPanel(new BorderLayout());
 		center.setBackground(PANEL);
-		center.add(split, BorderLayout.CENTER);
-		center.add(consolePanel, BorderLayout.SOUTH);
+		center.add(workspaceSplit, BorderLayout.CENTER);
 		return center;
 	}
 
@@ -207,9 +221,12 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		panel.setBorder(new EmptyBorder(12, 8, 8, 12));
 		panel.setBackground(PANEL);
 		JTabbedPane tabs = new JTabbedPane();
+		analysisTabs = tabs;
 		tabs.addTab("Análisis Léxico", createLexicalTab());
 		tabs.addTab("Análisis Sintáctico", createSyntaxTab());
 		tabs.addTab("Análisis Semántico", placeholder("Preparado para una futura fase semántica."));
+		tabs.setEnabledAt(1, false);
+		tabs.setEnabledAt(2, false);
 		panel.add(tabs, BorderLayout.CENTER);
 		return panel;
 	}
@@ -223,7 +240,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		heading.add(sectionTitle("ANÁLISIS LÉXICO"), BorderLayout.WEST);
 		heading.add(toolButton("Exportar Tabla", e -> exportTable()), BorderLayout.EAST);
 		panel.add(heading, BorderLayout.NORTH);
-		tokenTable.setRowHeight(28);
+		tokenTable.setRowHeight(23);
 		tokenTable.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
 		tokenTable.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
 		tokenTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -265,12 +282,18 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		JPanel panel = new JPanel(new BorderLayout(0, 10));
 		panel.setBackground(Color.WHITE);
 		panel.setBorder(new EmptyBorder(12, 12, 12, 12));
-		panel.add(sectionTitle("ANÁLISIS SINTÁCTICO"), BorderLayout.NORTH);
-		syntaxTable.setRowHeight(28);
+		JPanel heading = new JPanel(new BorderLayout());
+		heading.setOpaque(false);
+		heading.add(sectionTitle("ANÁLISIS SINTÁCTICO"), BorderLayout.WEST);
+		heading.add(toolButton("Exportar Tabla", e -> exportSyntaxTable()), BorderLayout.EAST);
+		panel.add(heading, BorderLayout.NORTH);
+		syntaxTable.setRowHeight(23);
 		syntaxTable.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
 		syntaxTable.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
 		syntaxTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		syntaxTable.setShowGrid(false);
+		syntaxTable.setFillsViewportHeight(true);
+		syntaxTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
 		syntaxTable.getColumnModel().getColumn(0).setPreferredWidth(50);
 		syntaxTable.getColumnModel().getColumn(1).setPreferredWidth(60);
 		syntaxTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
@@ -345,31 +368,109 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	private void analyze() {
 		tokenModel.setRowCount(0);
 		syntaxModel.setRowCount(0);
-		clearErrorHighlights();     
-        clearSyntaxHighlights();    
 		clearErrorHighlights();
+		clearSyntaxHighlights();
 		try {
 			resultados = control.analizarLexico(editor.getText());
 			for (Control.ResultadoToken token : resultados) {
 				tokenModel.addRow(new Object[] {token.id(), token.lexema(), token.nombre()});
 			}
 			highlightErrorLines();
-			appendConsole("Análisis léxico ejecutado.");
-			appendConsole(resultados.size() + " tokens encontrados.");
-
-			resultadosSintacticos = control.analizarSintactico(editor.getText());
-			for (Control.ResultadoSintactico e : resultadosSintacticos) {
-				syntaxModel.addRow(new Object[] {e.linea(), e.mensaje(), e.sintaxis()});
+			aplicarResaltadoLexico();
+			appendConsole("ANÁLISIS LÉXICO");
+			appendConsole(resultados.size() + " tokens reconocidos.");
+			long erroresLexicos = resultados.stream().filter(Control.ResultadoToken::esError).count();
+			appendConsole(erroresLexicos + " errores léxicos.");
+			analysisTabs.setEnabledAt(1, erroresLexicos == 0);
+			analysisTabs.setEnabledAt(2, false);
+			if (erroresLexicos > 0) {
+				for (Control.ResultadoToken token : resultados) {
+					if (token.esError()) {
+						appendConsole("Error léxico en línea " + token.linea() + ", columna "
+								+ token.columna() + ": " + token.descripcion());
+					}
+				}
+				appendConsole("No es posible ejecutar el análisis sintáctico.");
+				appendConsole("Existen errores léxicos pendientes que deben corregirse primero.");
+				return;
 			}
+			appendConsole("Análisis léxico completado correctamente.");
+			analysisTabs.setEnabledAt(1, true);
+
+			resultadosSintacticos = control.analizarSintactico(editor.getText(), resultados);
+			for (Control.ResultadoSintactico e : resultadosSintacticos) {
+				syntaxModel.addRow(new Object[] {e.linea(), e.columna(), e.encontrado(),
+						e.esperados(), e.descripcion()});
+				appendConsole("[ERROR SINTÁCTICO]");
+				appendConsole("Línea: " + e.linea() + "    Columna: " + e.columna());
+				appendConsole("Se encontró: " + e.encontrado());
+				appendConsole("Se esperaba: " + e.esperados());
+				appendConsole("Descripción: " + e.descripcion());
+			}
+			appendConsole("ANÁLISIS SINTÁCTICO");
 			if (resultadosSintacticos.isEmpty()) {
-				appendConsole("Análisis sintáctico correcto.");
+				appendConsole("0 errores sintácticos.");
+				appendConsole("La estructura del programa es válida.");
+				appendConsole("Análisis sintáctico completado correctamente.");
+				analysisTabs.setEnabledAt(2, true);
 			} else {
 				highlightSyntaxErrorLines(resultadosSintacticos);
 				appendConsole(resultadosSintacticos.size() + " error(es) sintáctico(s) encontrado(s).");
+				appendConsole("El análisis semántico permanece bloqueado.");
 			}
+			mostrarResultadoSintactico();
 		} catch (IOException | RuntimeException ex) {
 			appendConsole("Error durante el análisis: " + ex.getMessage());
 		}
+	}
+
+	private void mostrarResultadoSintactico() {
+		analysisTabs.setEnabledAt(1, true);
+		analysisTabs.revalidate();
+		analysisTabs.repaint();
+		SwingUtilities.invokeLater(() -> {
+			analysisTabs.setSelectedIndex(1);
+			analysisTabs.revalidate();
+			analysisTabs.repaint();
+		});
+	}
+
+	private void aplicarResaltadoLexico() {
+		StyledDocument document = editor.getStyledDocument();
+		Style normal = editor.addStyle("normal", null);
+		StyleConstants.setForeground(normal, new Color(31, 41, 55));
+		document.setCharacterAttributes(0, document.getLength(), normal, true);
+		for (Control.ResultadoToken token : resultados) {
+			int inicio = posicionOffset(token.linea(), token.columna());
+			if (inicio < 0 || inicio >= document.getLength()) continue;
+			Style style = editor.addStyle("token-" + token.nombre(), null);
+			StyleConstants.setForeground(style, colorToken(token.nombre()));
+			int longitud = Math.min(token.lexema().length(), document.getLength() - inicio);
+			document.setCharacterAttributes(inicio, longitud, style, true);
+		}
+	}
+
+	private int posicionOffset(int linea, int columna) {
+		Element root = editor.getDocument().getDefaultRootElement();
+		if (linea < 1 || linea > root.getElementCount()) return -1;
+		return Math.min(root.getElement(linea - 1).getStartOffset() + Math.max(0, columna - 1),
+				editor.getDocument().getLength());
+	}
+
+	private Color colorToken(String nombre) {
+		if (nombre == null) return new Color(31, 41, 55);
+		if (nombre.startsWith("TIPO_") || "VOID".equals(nombre)) return new Color(22, 101, 52);
+		if ("CADENA".equals(nombre)) return new Color(154, 52, 18);
+		if (nombre.equals("ENTERO") || nombre.equals("DECIMAL") || nombre.equals("HEXADECIMAL")
+				|| nombre.equals("BINARIO") || nombre.equals("OCTAL") || nombre.equals("EXPONENCIAL")) {
+			return new Color(107, 33, 168);
+		}
+		if (nombre.startsWith("OPERADOR_")) return Color.BLACK;
+		if ("ERROR_LEXICO".equals(nombre)) return new Color(185, 28, 28);
+		String[] reservadas = {"LET", "CONST", "VAR", "IF", "ELSE", "FOR", "WHILE", "RETURN",
+				"CLASS", "FUNCTION", "SWITCH"};
+		for (String reservada : reservadas) if (reservada.equals(nombre)) return new Color(30, 64, 175);
+		return new Color(31, 41, 55);
 	}
 
 	private void irALinea(int linea) {
@@ -380,7 +481,8 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		editor.setCaretPosition(lineElement.getStartOffset());
 		editor.requestFocusInWindow();
 		try {
-			editor.scrollRectToVisible(editor.modelToView(lineElement.getStartOffset()));
+			java.awt.geom.Rectangle2D rectangle = editor.modelToView2D(lineElement.getStartOffset());
+			if (rectangle != null) editor.scrollRectToVisible(rectangle.getBounds());
 		} catch (BadLocationException ignored) { }
 	}
 
@@ -427,10 +529,26 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		currentFile = null;
 		dirty = false;
 		fileLabel.setText("Sin archivo");
+		limpiarResultados();
+		limpiarConsola();
+	}
+
+	private void limpiarResultados() {
 		tokenModel.setRowCount(0);
+		syntaxModel.setRowCount(0);
 		resultados = Collections.emptyList();
+		resultadosSintacticos = Collections.emptyList();
 		clearErrorHighlights();
-		appendConsole("Nuevo archivo creado.");
+		clearSyntaxHighlights();
+		if (analysisTabs != null) {
+			analysisTabs.setEnabledAt(1, false);
+			analysisTabs.setEnabledAt(2, false);
+			analysisTabs.setSelectedIndex(0);
+		}
+	}
+
+	private void limpiarConsola() {
+		console.setText("");
 	}
 
 	private void exportTable() {
@@ -443,12 +561,34 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		} catch (IOException ex) { showError("No se pudo exportar la tabla: " + ex.getMessage()); }
 	}
 
+	private void exportSyntaxTable() {
+		JFileChooser chooser = new JFileChooser();
+		chooser.setSelectedFile(new File("sintaxis.txt"));
+		if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+		File archivo = chooser.getSelectedFile();
+		if (!archivo.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".txt")) {
+			archivo = new File(archivo.getPath() + ".txt");
+		}
+		try {
+			control.exportarTablaSintactica(archivo.toPath(), resultadosSintacticos);
+			appendConsole("Tabla sintáctica exportada correctamente.");
+		} catch (IOException ex) {
+			showError("No se pudo exportar la tabla sintáctica: " + ex.getMessage());
+		}
+	}
+
 	private void exit() {
 		if (!dirty || JOptionPane.showConfirmDialog(this, "Hay cambios sin guardar. ¿Salir?", "Salir",
 				JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) System.exit(0);
 	}
 
-	private void markDirty() { dirty = true; }
+	private void markDirty() {
+		dirty = true;
+		if (analysisTabs != null) {
+			analysisTabs.setEnabledAt(1, false);
+			analysisTabs.setEnabledAt(2, false);
+		}
+	}
 
 	private boolean esArchivoTxt(File archivo) {
 		return archivo != null && archivo.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".txt");
