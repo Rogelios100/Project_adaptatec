@@ -50,12 +50,16 @@ public class Ide extends JFrame {
 	private static final int TAB_SINTACTICO = 1;
 	private static final int TAB_SEMANTICO = 2;
 	private static final Color NAVY = new Color(31, 41, 55);
-	private static final Color BLUE = new Color(37, 99, 235);
 	private static final Color PANEL = new Color(248, 250, 252);
 	private static final Color BORDER = new Color(226, 232, 240);
 	private static final Color MUTED = new Color(100, 116, 139);
 
-	private final JTextPane editor = new JTextPane();
+	private final JTextPane editor = new JTextPane() {
+		@Override
+		public boolean getScrollableTracksViewportWidth() {
+			return false;
+		}
+	};
 	private final JTextArea console = new JTextArea();
 	private final DefaultTableModel tokenModel = new DefaultTableModel(new Object[] {"ID", "LEXEMA", "TOKEN"}, 0) {
 		@Override public boolean isCellEditable(int row, int column) { return false; }
@@ -149,7 +153,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		bar.add(toolButton("Guardar", e -> saveFile(false)));
 		bar.addSeparator(new Dimension(14, 1));
 		JButton analyze = toolButton("Analizar", e -> analyze());
-		analyze.setBackground(BLUE);
+		analyze.setBackground(NAVY);
 		analyze.setForeground(Color.WHITE);
 		bar.add(analyze);
 		bar.addSeparator(new Dimension(18, 1));
@@ -723,9 +727,13 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	private static final class LineNumbers extends JTextArea {
 		private final JTextComponent editor;
 		private Set<Integer> errorLines = Collections.emptySet();
+		private int displayedLineCount = -1;
 		LineNumbers(JTextComponent editor) {
 			this.editor = editor;
 			setEditable(false);
+			setFocusable(false);
+			setLineWrap(false);
+			setWrapStyleWord(false);
 			setFont(editor.getFont());
 			setForeground(MUTED);
 			setBackground(new Color(241, 245, 249));
@@ -742,6 +750,8 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		}
 		private void update() {
 			int lines = editor.getDocument().getDefaultRootElement().getElementCount();
+			if (lines == displayedLineCount) return;
+			displayedLineCount = lines;
 			StringBuilder numbers = new StringBuilder();
 			for (int i = 1; i <= lines; i++) numbers.append(i).append('\n');
 			setText(numbers.toString());
