@@ -690,7 +690,7 @@ private int jjMoveNfa_0(int startState, int curPos)
                case 117:
                   if ((0x3ff001000000000L & l) != 0L)
                      { jjCheckNAddTwoStates(69, 70); }
-                  else if ((0x8000000800000000L & l) != 0L)
+                  else if (curChar == 35)
                   {
                      if (kind > 87)
                         kind = 87;
@@ -1084,7 +1084,7 @@ private int jjMoveNfa_0(int startState, int curPos)
                      { jjCheckNAddTwoStates(69, 70); }
                   break;
                case 70:
-                  if ((0x8000000800000000L & l) == 0L)
+                  if (curChar != 35)
                      break;
                   if (kind > 87)
                      kind = 87;
