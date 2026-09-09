@@ -5,7 +5,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
@@ -47,6 +46,9 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
 public class Ide extends JFrame {
+	private static final int TAB_LEXICO = 0;
+	private static final int TAB_SINTACTICO = 1;
+	private static final int TAB_SEMANTICO = 2;
 	private static final Color NAVY = new Color(31, 41, 55);
 	private static final Color BLUE = new Color(37, 99, 235);
 	private static final Color PANEL = new Color(248, 250, 252);
@@ -67,6 +69,10 @@ private final DefaultTableModel syntaxModel = new DefaultTableModel(new Object[]
     @Override public boolean isCellEditable(int row, int column) { return false; }
 };
 private final JTable syntaxTable = new JTable(syntaxModel);
+	private final DefaultTableModel semanticModel = new DefaultTableModel(new Object[] {"ESTADO", "DESCRIPCIÓN"}, 0) {
+		@Override public boolean isCellEditable(int row, int column) { return false; }
+	};
+	private final JTable semanticTable = new JTable(semanticModel);
 	private List<Control.ResultadoToken> resultados = Collections.emptyList();
 	private List<Control.ResultadoSintactico> resultadosSintacticos = Collections.emptyList();
 	private final List<Object> errorLineHighlights = new java.util.ArrayList<>();
@@ -74,6 +80,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	private LineNumbers lineNumbers;
 	private File currentFile;
 	private boolean dirty;
+	private boolean analisisLexicoExitoso;
 	private JTabbedPane analysisTabs;
 
 	public Ide() {
@@ -95,7 +102,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 			@Override
 			public void removeUpdate(javax.swing.event.DocumentEvent e) { markDirty(); }
 			@Override
-			public void changedUpdate(javax.swing.event.DocumentEvent e) { markDirty(); }
+			public void changedUpdate(javax.swing.event.DocumentEvent e) { }
 		});
 		updatePosition(null);
 	}
@@ -224,9 +231,9 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		analysisTabs = tabs;
 		tabs.addTab("Análisis Léxico", createLexicalTab());
 		tabs.addTab("Análisis Sintáctico", createSyntaxTab());
-		tabs.addTab("Análisis Semántico", placeholder("Preparado para una futura fase semántica."));
-		tabs.setEnabledAt(1, false);
-		tabs.setEnabledAt(2, false);
+		tabs.addTab("Análisis Semántico", createSemanticTab());
+		tabs.setEnabledAt(TAB_SINTACTICO, false);
+		tabs.setEnabledAt(TAB_SEMANTICO, false);
 		panel.add(tabs, BorderLayout.CENTER);
 		return panel;
 	}
@@ -317,6 +324,25 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		panel.add(new JScrollPane(syntaxTable), BorderLayout.CENTER);
 		return panel;
 	}
+
+	private JPanel createSemanticTab() {
+		JPanel panel = new JPanel(new BorderLayout(0, 10));
+		panel.setBackground(Color.WHITE);
+		panel.setBorder(new EmptyBorder(12, 12, 12, 12));
+		JPanel heading = new JPanel(new BorderLayout());
+		heading.setOpaque(false);
+		heading.add(sectionTitle("ANÁLISIS SEMÁNTICO"), BorderLayout.WEST);
+		heading.add(toolButton("Exportar Tabla", e -> exportSemanticTable()), BorderLayout.EAST);
+		panel.add(heading, BorderLayout.NORTH);
+		semanticTable.setRowHeight(23);
+		semanticTable.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+		semanticTable.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+		semanticTable.setShowGrid(false);
+		semanticTable.setFillsViewportHeight(true);
+		semanticTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+		panel.add(new JScrollPane(semanticTable), BorderLayout.CENTER);
+		return panel;
+	}
 	
 	private void clearSyntaxHighlights() {
 		for (Object highlight : syntaxErrorHighlights) editor.getHighlighter().removeHighlight(highlight);
@@ -337,13 +363,11 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		}
 	}
 	
-	private JPanel placeholder(String message) {
-		JPanel panel = new JPanel(new GridLayout(1, 1));
-		panel.setBackground(Color.WHITE);
-		JLabel label = new JLabel(message, JLabel.CENTER);
-		label.setForeground(MUTED);
-		panel.add(label);
-		return panel;
+	private void setAnalysisTabEnabled(int index, boolean enabled) {
+		if (analysisTabs == null || index < 0 || index >= analysisTabs.getTabCount()) return;
+		analysisTabs.setEnabledAt(index, enabled);
+		analysisTabs.revalidate();
+		analysisTabs.repaint();
 	}
 
 	private JPanel createStatusBar() {
@@ -366,8 +390,14 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	}
 
 	private void analyze() {
+		console.setText("");
 		tokenModel.setRowCount(0);
 		syntaxModel.setRowCount(0);
+		semanticModel.setRowCount(0);
+		resultadosSintacticos = Collections.emptyList();
+		analisisLexicoExitoso = false;
+		setAnalysisTabEnabled(TAB_SINTACTICO, false);
+		setAnalysisTabEnabled(TAB_SEMANTICO, false);
 		clearErrorHighlights();
 		clearSyntaxHighlights();
 		try {
@@ -381,8 +411,6 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 			appendConsole(resultados.size() + " tokens reconocidos.");
 			long erroresLexicos = resultados.stream().filter(Control.ResultadoToken::esError).count();
 			appendConsole(erroresLexicos + " errores léxicos.");
-			analysisTabs.setEnabledAt(1, erroresLexicos == 0);
-			analysisTabs.setEnabledAt(2, false);
 			if (erroresLexicos > 0) {
 				for (Control.ResultadoToken token : resultados) {
 					if (token.esError()) {
@@ -390,12 +418,11 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 								+ token.columna() + ": " + token.descripcion());
 					}
 				}
-				appendConsole("No es posible ejecutar el análisis sintáctico.");
-				appendConsole("Existen errores léxicos pendientes que deben corregirse primero.");
 				return;
 			}
 			appendConsole("Análisis léxico completado correctamente.");
-			analysisTabs.setEnabledAt(1, true);
+			analisisLexicoExitoso = true;
+			setAnalysisTabEnabled(TAB_SINTACTICO, true);
 
 			resultadosSintacticos = control.analizarSintactico(editor.getText(), resultados);
 			for (Control.ResultadoSintactico e : resultadosSintacticos) {
@@ -409,30 +436,22 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 			}
 			appendConsole("ANÁLISIS SINTÁCTICO");
 			if (resultadosSintacticos.isEmpty()) {
+				syntaxModel.addRow(new Object[] {"-", "-", "-", "-", "Sin errores sintácticos. La estructura del programa es válida."});
 				appendConsole("0 errores sintácticos.");
 				appendConsole("La estructura del programa es válida.");
 				appendConsole("Análisis sintáctico completado correctamente.");
-				analysisTabs.setEnabledAt(2, true);
+				semanticModel.addRow(new Object[] {"VÁLIDO", "No se encontraron errores semánticos."});
+				setAnalysisTabEnabled(TAB_SEMANTICO, true);
 			} else {
 				highlightSyntaxErrorLines(resultadosSintacticos);
 				appendConsole(resultadosSintacticos.size() + " error(es) sintáctico(s) encontrado(s).");
 				appendConsole("El análisis semántico permanece bloqueado.");
 			}
-			mostrarResultadoSintactico();
+			analysisTabs.revalidate();
+			analysisTabs.repaint();
 		} catch (IOException | RuntimeException ex) {
 			appendConsole("Error durante el análisis: " + ex.getMessage());
 		}
-	}
-
-	private void mostrarResultadoSintactico() {
-		analysisTabs.setEnabledAt(1, true);
-		analysisTabs.revalidate();
-		analysisTabs.repaint();
-		SwingUtilities.invokeLater(() -> {
-			analysisTabs.setSelectedIndex(1);
-			analysisTabs.revalidate();
-			analysisTabs.repaint();
-		});
 	}
 
 	private void aplicarResaltadoLexico() {
@@ -538,12 +557,14 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		syntaxModel.setRowCount(0);
 		resultados = Collections.emptyList();
 		resultadosSintacticos = Collections.emptyList();
+		analisisLexicoExitoso = false;
+		semanticModel.setRowCount(0);
 		clearErrorHighlights();
 		clearSyntaxHighlights();
 		if (analysisTabs != null) {
-			analysisTabs.setEnabledAt(1, false);
-			analysisTabs.setEnabledAt(2, false);
-			analysisTabs.setSelectedIndex(0);
+			setAnalysisTabEnabled(TAB_SINTACTICO, false);
+			setAnalysisTabEnabled(TAB_SEMANTICO, false);
+			analysisTabs.setSelectedIndex(TAB_LEXICO);
 		}
 	}
 
@@ -562,6 +583,9 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	}
 
 	private void exportSyntaxTable() {
+		if (!analisisLexicoExitoso) {
+			return;
+		}
 		JFileChooser chooser = new JFileChooser();
 		chooser.setSelectedFile(new File("sintaxis.txt"));
 		if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
@@ -577,6 +601,28 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		}
 	}
 
+	private void exportSemanticTable() {
+		if (!analisisLexicoExitoso || !analysisTabs.isEnabledAt(TAB_SEMANTICO)) return;
+		JFileChooser chooser = new JFileChooser();
+		chooser.setSelectedFile(new File("semantica.txt"));
+		if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+		File archivo = chooser.getSelectedFile();
+		if (!archivo.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".txt")) {
+			archivo = new File(archivo.getPath() + ".txt");
+		}
+		try {
+			StringBuilder salida = new StringBuilder("ESTADO\tDESCRIPCIÓN\n");
+			for (int fila = 0; fila < semanticModel.getRowCount(); fila++) {
+				salida.append(semanticModel.getValueAt(fila, 0)).append('\t')
+						.append(semanticModel.getValueAt(fila, 1)).append('\n');
+			}
+			control.guardarArchivo(archivo.toPath(), salida.toString());
+			appendConsole("Tabla semántica exportada correctamente.");
+		} catch (IOException ex) {
+			showError("No se pudo exportar la tabla semántica: " + ex.getMessage());
+		}
+	}
+
 	private void exit() {
 		if (!dirty || JOptionPane.showConfirmDialog(this, "Hay cambios sin guardar. ¿Salir?", "Salir",
 				JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) System.exit(0);
@@ -585,8 +631,8 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	private void markDirty() {
 		dirty = true;
 		if (analysisTabs != null) {
-			analysisTabs.setEnabledAt(1, false);
-			analysisTabs.setEnabledAt(2, false);
+			setAnalysisTabEnabled(TAB_SINTACTICO, false);
+			setAnalysisTabEnabled(TAB_SEMANTICO, false);
 		}
 	}
 

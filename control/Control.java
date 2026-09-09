@@ -76,7 +76,11 @@ public class Control {
 
 	public void exportarTablaSintactica(Path archivo, List<ResultadoSintactico> errores) throws IOException {
 		StringBuilder salida = new StringBuilder("LÍNEA\tCOLUMNA\tENCONTRADO\tESPERADOS\tDESCRIPCIÓN\n");
-		for (ResultadoSintactico error : errores) {
+		if (errores == null || errores.isEmpty()) {
+			salida.append("-\t-\t-\t-\tSin errores sintácticos. La estructura del programa es válida.\n");
+		}
+		for (ResultadoSintactico error : errores == null
+				? java.util.Collections.<ResultadoSintactico>emptyList() : errores) {
 			salida.append(error.linea()).append('\t')
 					.append(error.columna()).append('\t')
 					.append(error.encontrado()).append('\t')
@@ -106,7 +110,7 @@ private String nombreToken(int kind) {
 
 	public List<ResultadoSintactico> analizarSintactico(String codigo, List<ResultadoToken> tokens) {
 		List<ResultadoSintactico> errores = new ArrayList<>();
-		if (tokens.stream().anyMatch(ResultadoToken::esError)) return errores;
+		if (tokens == null || tokens.stream().anyMatch(ResultadoToken::esError)) return errores;
 		Parser parser = new Parser(new StringReader(codigo == null ? "" : codigo));
 		try {
 			parser.Inicio();

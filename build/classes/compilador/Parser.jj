@@ -60,7 +60,15 @@ private boolean siguienteEsFlecha() {
     if (kind == PARENTESIS_APERTURA) profundidad++;
     if (kind == PARENTESIS_CIERRE) {
       profundidad--;
-      if (profundidad == 0) return getToken(posicion + 1).kind == FLECHA;
+      if (profundidad == 0) {
+        for (int despues = posicion + 1; despues < 256; despues++) {
+          int siguiente = getToken(despues).kind;
+          if (siguiente == FLECHA) return true;
+          if (siguiente == PUNTO_Y_COMA || siguiente == LLAVE_APERTURA
+              || siguiente == LLAVE_CIERRE || siguiente == EOF) return false;
+        }
+        return false;
+      }
     }
     if (kind == EOF) return false;
   }
@@ -123,7 +131,7 @@ TOKEN :
   | < WHILE: "while" > | < WITH: "with" > | < LET: "let" > | < STATIC: "static" > | < YIELD: "yield" >
   | < AWAIT: "await" > | < INTERFACE: "interface" > | < PACKAGE: "package" > | < PRIVATE: "private" >
   | < PROTECTED: "protected" > | < PUBLIC: "public" > | < IMPLEMENTS: "implements" >
-  | < TRUE: "true" > | < FALSE: "false" > | < OF: "of" >
+  | < TRUE: "true" > | < FALSE: "false" > | < OF: "of" > | < CONSTRUCTOR: "constructor" >
 }
 
 TOKEN :
@@ -201,7 +209,7 @@ TOKEN :
         // Identificador con carácter inválido en medio
         ((["A"-"Z", "a"-"z", "_", "$"])
           (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])*
-          ("@" | "#" | "?")
+          ("@" | "#")
           (["A"-"Z", "a"-"z", "0"-"9", "_", "$"])*)
 
       | ("\"" (~["\"", "\r", "\n"])* )
@@ -265,7 +273,7 @@ void VariableDeclaracion() : {}
 {
   (<LET> | <CONST> | <VAR>) <IDENTIFICADOR>
   [ <DOS_PUNTOS> Tipo() ] [ <OPERADOR_ASIGNACION> Expresion() ]
-  <PUNTO_Y_COMA>
+  [ <PUNTO_Y_COMA> ]
 }
 
 void Tipo() : {}
@@ -320,13 +328,14 @@ void Factor() : {}
 void Valor() : {}
 {
     LOOKAHEAD( {siguienteEsFlecha()} ) FlechaFuncion()
-  | LOOKAHEAD(2) <IDENTIFICADOR> <FLECHA> Expresion()
+  | LOOKAHEAD(3) <IDENTIFICADOR> [ <INTERROGACION> ] [ <DOS_PUNTOS> Tipo() ] <FLECHA> Expresion()
   | Primario() [ <INCREMENTO> | <DECREMENTO> ]
 }
 
 void Primario() : {}
 {
-    <IDENTIFICADOR> ( <PUNTO> <IDENTIFICADOR> | LlamadaArgumentos() | AccesoArreglo() )*
+  ( <IDENTIFICADOR> | <THIS> ) ( <PUNTO> <IDENTIFICADOR> | LlamadaArgumentos() | AccesoArreglo() )*
+  | <NEW> <IDENTIFICADOR> [ LlamadaArgumentos() ]
   | <ENTERO> | <DECIMAL> | <EXPONENCIAL> | <HEXADECIMAL> | <BINARIO> | <OCTAL>
   | <CADENA> | <TRUE> | <FALSE> | ArregloLiteral() | ObjetoLiteral()
   | <PARENTESIS_APERTURA> Expresion() <PARENTESIS_CIERRE>
@@ -360,17 +369,84 @@ void PropiedadObjeto() : {}
 void FlechaFuncion() : {}
 {
   <PARENTESIS_APERTURA> [ Parametro() ( <COMA> Parametro() )* ] <PARENTESIS_CIERRE>
-  <FLECHA> ( Bloque() | Expresion() )
+  [ <DOS_PUNTOS> Tipo() ] <FLECHA> ( Bloque() | Expresion() )
 }
 
 void Parametro() : {}
 {
-  <IDENTIFICADOR> [ <DOS_PUNTOS> Tipo() ]
+  <IDENTIFICADOR> [ <INTERROGACION> ] [ <DOS_PUNTOS> Tipo() ]
 }
 
 void Instruccion() : {}
 {
-  Declaracion() | FuncionDeclaracion() | Sentencia()
+  InterfaceDeclaracion() | EnumDeclaracion() | ClaseDeclaracion()
+  | Declaracion() | FuncionDeclaracion() | Sentencia()
+}
+
+void InterfaceDeclaracion() : {}
+{
+  <INTERFACE> <IDENTIFICADOR> <LLAVE_APERTURA>
+  ( InterfaceMiembro() )*
+  <LLAVE_CIERRE>
+}
+
+void InterfaceMiembro() : {}
+{
+  LOOKAHEAD(2) MetodoFirma()
+  | <IDENTIFICADOR> [ <INTERROGACION> ] [ <DOS_PUNTOS> Tipo() ] [ <PUNTO_Y_COMA> ]
+}
+
+void MetodoFirma() : {}
+{
+  <IDENTIFICADOR> <PARENTESIS_APERTURA>
+  [ Parametro() ( <COMA> Parametro() )* ] <PARENTESIS_CIERRE>
+  [ <DOS_PUNTOS> Tipo() ] [ <PUNTO_Y_COMA> ]
+}
+
+void EnumDeclaracion() : {}
+{
+  <ENUM> <IDENTIFICADOR> <LLAVE_APERTURA>
+  [ <IDENTIFICADOR> ( <COMA> <IDENTIFICADOR> )* [ <COMA> ] ]
+  <LLAVE_CIERRE>
+}
+
+void ClaseDeclaracion() : {}
+{
+  <CLASS> <IDENTIFICADOR> [ <EXTENDS> <IDENTIFICADOR> ]
+  <LLAVE_APERTURA> ( MiembroClase() )* <LLAVE_CIERRE>
+}
+
+void MiembroClase() : {}
+{
+  Modificadores()
+  ( ConstructorClase()
+  | LOOKAHEAD(2) MetodoClase()
+  | CampoClase() )
+}
+
+void Modificadores() : {}
+{
+  ( <PUBLIC> | <PRIVATE> | <PROTECTED> | <STATIC> )*
+}
+
+void ConstructorClase() : {}
+{
+  <CONSTRUCTOR> <PARENTESIS_APERTURA>
+  [ Parametro() ( <COMA> Parametro() )* ] <PARENTESIS_CIERRE>
+  Bloque()
+}
+
+void MetodoClase() : {}
+{
+  <IDENTIFICADOR> <PARENTESIS_APERTURA>
+  [ Parametro() ( <COMA> Parametro() )* ] <PARENTESIS_CIERRE>
+  [ <DOS_PUNTOS> Tipo() ] Bloque()
+}
+
+void CampoClase() : {}
+{
+  <IDENTIFICADOR> [ <INTERROGACION> ] [ <DOS_PUNTOS> Tipo() ]
+  [ <OPERADOR_ASIGNACION> Expresion() ] [ <PUNTO_Y_COMA> ]
 }
 
 void Declaracion() : {}
@@ -380,7 +456,7 @@ void Declaracion() : {}
 
 void Asignacion() : {}
 {
-  <IDENTIFICADOR> ( <PUNTO> <IDENTIFICADOR> )*
+  ( <IDENTIFICADOR> | <THIS> ) ( <PUNTO> <IDENTIFICADOR> )*
   <OPERADOR_ASIGNACION> Expresion() <PUNTO_Y_COMA>
 }
 
@@ -389,8 +465,8 @@ void Sentencia() : {}
       LOOKAHEAD(5) Asignacion()
     | LOOKAHEAD(3) IncrementoSentencia()
     | LOOKAHEAD(4) LlamadaFuncion() <PUNTO_Y_COMA>
-  | IfSentencia() | ForSentencia() | WhileSentencia()
-  | ReturnSentencia() | Bloque()
+  | IfSentencia() | ForSentencia() | WhileSentencia() | DoWhileSentencia()
+  | SwitchSentencia() | ReturnSentencia() | BreakSentencia() | Bloque()
 }
 
 void IncrementoSentencia() : {}
@@ -410,7 +486,7 @@ void Bloque() : {}
 
 void LlamadaFuncion() : {}
 {
-  <IDENTIFICADOR> ( <PUNTO> <IDENTIFICADOR> )* LlamadaArgumentos()
+  ( <IDENTIFICADOR> | <THIS> ) ( <PUNTO> <IDENTIFICADOR> )* LlamadaArgumentos()
 }
 
 void FuncionDeclaracion() : {}
@@ -422,7 +498,12 @@ void FuncionDeclaracion() : {}
 
 void ReturnSentencia() : {}
 {
-  <RETURN> [ Expresion() ] <PUNTO_Y_COMA>
+  <RETURN> [ Expresion() ] [ <PUNTO_Y_COMA> ]
+}
+
+void BreakSentencia() : {}
+{
+  <BREAK> [ <PUNTO_Y_COMA> ]
 }
 
 void IfSentencia() : {}
@@ -445,7 +526,25 @@ void ForSentencia() : {}
   <PARENTESIS_CIERRE> Sentencia()
 }
 
+void DoWhileSentencia() : {}
+{
+  <DO> Sentencia() <WHILE> <PARENTESIS_APERTURA> Expresion() <PARENTESIS_CIERRE>
+  [ <PUNTO_Y_COMA> ]
+}
+
 void WhileSentencia() : {}
 {
   <WHILE> <PARENTESIS_APERTURA> Expresion() <PARENTESIS_CIERRE> Sentencia()
+}
+
+void SwitchSentencia() : {}
+{
+  <SWITCH> <PARENTESIS_APERTURA> Expresion() <PARENTESIS_CIERRE>
+  <LLAVE_APERTURA> ( CasoSwitch() )* <LLAVE_CIERRE>
+}
+
+void CasoSwitch() : {}
+{
+  ( <CASE> Expresion() | <DEFA> ) <DOS_PUNTOS>
+  ( Instruccion() )*
 }
