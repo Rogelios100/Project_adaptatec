@@ -1,5 +1,5 @@
 package main;
-
+/*prueba de comentario */
 import control.Control;
 
 public final class Main {
