@@ -79,6 +79,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	private final JTable semanticTable = new JTable(semanticModel);
 	private List<Control.ResultadoToken> resultados = Collections.emptyList();
 	private List<Control.ResultadoSintactico> resultadosSintacticos = Collections.emptyList();
+	private List<Control.ResultadoSemantico> resultadosSemanticos = Collections.emptyList();
 	private final List<Object> errorLineHighlights = new java.util.ArrayList<>();
 	private final List<Object> syntaxErrorHighlights = new java.util.ArrayList<>();
 	private LineNumbers lineNumbers;
@@ -399,6 +400,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		syntaxModel.setRowCount(0);
 		semanticModel.setRowCount(0);
 		resultadosSintacticos = Collections.emptyList();
+		resultadosSemanticos = Collections.emptyList();
 		analisisLexicoExitoso = false;
 		setAnalysisTabEnabled(TAB_SINTACTICO, false);
 		setAnalysisTabEnabled(TAB_SEMANTICO, false);
@@ -444,7 +446,19 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 				appendConsole("0 errores sintácticos.");
 				appendConsole("La estructura del programa es válida.");
 				appendConsole("Análisis sintáctico completado correctamente.");
-				semanticModel.addRow(new Object[] {"VÁLIDO", "No se encontraron errores semánticos."});
+				resultadosSemanticos = control.analizarSemantico(editor.getText(), resultados,
+						resultadosSintacticos);
+				if (resultadosSemanticos.isEmpty()) {
+					semanticModel.addRow(new Object[] {"VÁLIDO", "No se encontraron errores semánticos."});
+					appendConsole("Análisis semántico completado correctamente.");
+				} else {
+					for (Control.ResultadoSemantico error : resultadosSemanticos) {
+						semanticModel.addRow(new Object[] {error.estado(), error.descripcion()});
+						appendConsole("[ERROR SEMÁNTICO] Línea " + error.linea() + ", columna "
+								+ error.columna() + ": " + error.descripcion());
+					}
+					appendConsole(resultadosSemanticos.size() + " error(es) semántico(s) encontrado(s).");
+				}
 				setAnalysisTabEnabled(TAB_SEMANTICO, true);
 			} else {
 				highlightSyntaxErrorLines(resultadosSintacticos);
@@ -561,6 +575,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		syntaxModel.setRowCount(0);
 		resultados = Collections.emptyList();
 		resultadosSintacticos = Collections.emptyList();
+		resultadosSemanticos = Collections.emptyList();
 		analisisLexicoExitoso = false;
 		semanticModel.setRowCount(0);
 		clearErrorHighlights();

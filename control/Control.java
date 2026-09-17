@@ -90,6 +90,15 @@ public class Control {
 		guardarArchivo(archivo, salida.toString());
 	}
 
+	public List<ResultadoSemantico> analizarSemantico(String codigo, List<ResultadoToken> tokens,
+			List<ResultadoSintactico> erroresSintacticos) {
+		if (tokens == null || tokens.stream().anyMatch(ResultadoToken::esError)
+				|| erroresSintacticos == null || !erroresSintacticos.isEmpty()) {
+			return List.of();
+		}
+		return AnalizadorSemantico.analizar(tokens);
+	}
+
 private String nombreToken(int kind) {
 	try {
 		for (java.lang.reflect.Field field : ParserConstants.class.getFields()) {
@@ -107,6 +116,8 @@ private String nombreToken(int kind) {
 
 	public record ResultadoSintactico(int linea, int columna, String encontrado,
 			String esperados, String descripcion) {}
+
+	public record ResultadoSemantico(int linea, int columna, String estado, String descripcion) {}
 
 	public List<ResultadoSintactico> analizarSintactico(String codigo, List<ResultadoToken> tokens) {
 		List<ResultadoSintactico> errores = new ArrayList<>();

@@ -9,6 +9,10 @@ public class Parser implements ParserConstants {
     public java.util.List<String[]> erroresSintacticos =
             new java.util.ArrayList<>();
 
+    public boolean tieneErroresSintacticos() {
+      return !erroresSintacticos.isEmpty();
+    }
+
 private void registrarError(ParseException e) {
   Token encontrado = getToken(1);
   int linea = encontrado != null ? encontrado.beginLine : -1;
