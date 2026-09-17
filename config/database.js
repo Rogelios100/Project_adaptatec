@@ -85,13 +85,17 @@ async function createTables() {
     ) ENGINE=InnoDB;
   `);
 
-  await run(`
-    ALTER TABLE materias ADD COLUMN IF NOT EXISTS total_modulos INT DEFAULT 12;
-  `);
+  await addColumnIfMissing(
+    'materias',
+    'total_modulos',
+    'INT DEFAULT 12'
+  );
 
-  await run(`
-    ALTER TABLE materias ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE;
-  `);
+  await addColumnIfMissing(
+    'materias',
+    'activo',
+    'BOOLEAN DEFAULT TRUE'
+  );
 
   // 3. Tabla de módulos (para desglose granular)
   await run(`
@@ -285,6 +289,19 @@ async function createTables() {
       FOREIGN KEY (recompensaId) REFERENCES recompensas_canjeables(id) ON DELETE CASCADE ON UPDATE CASCADE
     ) ENGINE=InnoDB;
   `);
+}
+
+async function addColumnIfMissing(tableName, columnName, definition) {
+  const [columns] = await pool.query(
+    `SELECT COUNT(*) AS count
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [DB_DATABASE, tableName, columnName]
+  );
+
+  if (columns[0].count === 0) {
+    await run(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`);
+  }
 }
 
 async function insertDefaultData() {

@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeDatabase } from './config/database.js';
@@ -10,9 +10,7 @@ import userRoutes from './routes/users.js';
 import materiasRoutes from './routes/materias.js';
 import groqRoutes from './routes/groq.js';
 
-// Cargar variables de entorno
-dotenv.config();
-console.log('GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ Configurada' : '❌ No encontrada');
+console.log('XAI_API_KEY:', process.env.XAI_API_KEY ? '✅ Configurada' : '❌ No encontrada');
 
 // Configurar rutas para archivos estáticos
 const __filename = fileURLToPath(import.meta.url);

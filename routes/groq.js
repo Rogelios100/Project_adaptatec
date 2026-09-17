@@ -9,8 +9,8 @@ const __dirname = path.dirname(__filename);
 // Cargar .env desde la raíz del proyecto
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-console.log('📁 [groq.js] .env cargado desde:', path.join(__dirname, '..', '.env'));
-console.log('🔑 [groq.js] GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ EXISTE' : '❌ NO EXISTE');
+console.log('📁 [xai.js] .env cargado desde:', path.join(__dirname, '..', '.env'));
+console.log('🔑 [xai.js] XAI_API_KEY:', process.env.XAI_API_KEY ? '✅ EXISTE' : '❌ NO EXISTE');
 
 // routes/groq.js
 import express from 'express';
@@ -20,25 +20,24 @@ import groqCache from '../utils/groqCache.js';
 import groqLogger from '../utils/groqLogger.js';
 import { getFallbackResponse, shouldUseFallback, getErrorMessage } from '../utils/fallbackResponses.js';
 
-console.log('=== DIAGNÓSTICO GROQ ===');
-console.log('process.env.GROQ_API_KEY:', process.env.GROQ_API_KEY ? '✅ EXISTE' : '❌ NO EXISTE');
-console.log('Valor:', process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.substring(0, 20) + '...' : 'vacío');
+console.log('=== DIAGNÓSTICO XAI ===');
+console.log('process.env.XAI_API_KEY:', process.env.XAI_API_KEY ? '✅ EXISTE' : '❌ NO EXISTE');
 console.log('========================');
 
 const router = express.Router();
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const XAI_MODEL = process.env.XAI_MODEL || 'grok-3-mini';
+const XAI_API_KEY = process.env.XAI_API_KEY;
 
 /**
  * Validación de configuración
  */
-function validateGroqConfig() {
-  const key = GROQ_API_KEY;
+function validateXaiConfig() {
+  const key = XAI_API_KEY;
   
-  if (!key || key === 'tu_api_key_de_groq_aqui') {
+  if (!key || key === 'tu_api_key_de_xai_aqui') {
     return {
       valid: false,
-      error: '🔑 API key de Groq no está configurada en el servidor. Contacta al administrador.'
+      error: '🔑 API key de xAI no está configurada en el servidor. Contacta al administrador.'
     };
   }
   
@@ -65,13 +64,13 @@ Mantén las respuestas concisas pero informativas.`;
 }
 
 /**
- * Llama a Groq API con manejo de errores
+ * Llama a xAI API con formato compatible con OpenAI
  */
-async function callGroqAPI(messages, apiKey) {
+async function callXaiAPI(messages, apiKey) {
   const startTime = Date.now();
   
   const response = await fetch(
-    'https://api.groq.com/openai/v1/chat/completions',
+    'https://api.x.ai/v1/chat/completions',
     {
       method: 'POST',
       headers: { 
@@ -79,7 +78,7 @@ async function callGroqAPI(messages, apiKey) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: GROQ_MODEL,
+        model: XAI_MODEL,
         messages: messages,
         temperature: 0.7,
         max_tokens: 1024,
@@ -109,10 +108,10 @@ router.post('/', verifyToken, async (req, res) => {
   const { pregunta, materia, contexto } = req.body;
   const startTime = Date.now();
 
-  const configCheck = validateGroqConfig();
+  const configCheck = validateXaiConfig();
   if (!configCheck.valid) {
     const fallbackResponse = getFallbackResponse(materia, { statusCode: 503 });
-    groqLogger.logFallback(503, pregunta, materia, 'GROQ_API_KEY no configurada');
+    groqLogger.logFallback(503, pregunta, materia, 'XAI_API_KEY no configurada');
 
     return res.status(200).json({
       respuesta: fallbackResponse,
@@ -120,7 +119,7 @@ router.post('/', verifyToken, async (req, res) => {
       reason: configCheck.error,
       statusCode: 503,
       responseTime: Date.now() - startTime,
-      warning: '⚠️ Groq no está configurado. Respuesta de respaldo en uso.'
+      warning: '⚠️ xAI no está configurado. Respuesta de respaldo en uso.'
     });
   }
 
@@ -143,12 +142,12 @@ router.post('/', verifyToken, async (req, res) => {
     { role: 'system', content: system },
     { role: 'user', content: userMessage }
   ];
-  const apiKey = GROQ_API_KEY;
+  const apiKey = XAI_API_KEY;
 
   try {
     const { respuesta, responseTime } = await retryHandler.execute(
-      () => callGroqAPI(messages, apiKey),
-      'Groq API Call'
+      () => callXaiAPI(messages, apiKey),
+      'xAI API Call'
     );
 
     groqCache.set(pregunta, materia, respuesta);
@@ -156,7 +155,7 @@ router.post('/', verifyToken, async (req, res) => {
 
     return res.json({
       respuesta,
-      source: 'groq',
+      source: 'xai',
       responseTime
     });
 
@@ -201,8 +200,8 @@ router.post('/generate-quiz', verifyToken, async (req, res) => {
         console.log(`📝 Generando examen para: ${materiaNombre} - ${moduloNombre}`);
         
         // Si no hay API Key, usar fallback
-        if (!process.env.GROQ_API_KEY || process.env.GROQ_API_KEY === 'tu_api_key_de_groq_aqui') {
-            console.log('⚠️ GROQ_API_KEY no configurada, usando fallback');
+        if (!XAI_API_KEY || XAI_API_KEY === 'tu_api_key_de_xai_aqui') {
+          console.log('⚠️ XAI_API_KEY no configurada, usando fallback');
             const fallbackQuiz = generarQuizFallback(moduloNombre, materiaNombre);
             return res.json(fallbackQuiz);
         }
@@ -225,16 +224,16 @@ RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON, sin explicaciones, sin saludos, sin 
   ]
 }`;
 
-        console.log('🚀 Enviando solicitud a Groq...');
+        console.log('🚀 Enviando solicitud a xAI...');
         
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const response = await fetch('https://api.x.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+                'Authorization': `Bearer ${XAI_API_KEY}`
             },
             body: JSON.stringify({
-                model: GROQ_MODEL,
+                model: XAI_MODEL,
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.3,  // Reducir temperatura para respuestas más consistentes
                 max_tokens: 2000
@@ -246,7 +245,7 @@ RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON, sin explicaciones, sin saludos, sin 
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ Error body:', errorText);
-            throw new Error(`Groq API error: ${response.status}`);
+            throw new Error(`xAI API error: ${response.status}`);
         }
         
         const data = await response.json();
@@ -391,6 +390,6 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 groqCache.cleanup();
-console.log('✅ Sistema de Groq con respaldo profesional inicializado');
+console.log('✅ Sistema de xAI con respaldo profesional inicializado');
 
 export default router;
