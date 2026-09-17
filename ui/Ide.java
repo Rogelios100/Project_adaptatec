@@ -5,7 +5,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
 import java.awt.Insets;
+import java.awt.Shape;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
@@ -41,6 +43,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
+import javax.swing.text.Highlighter;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
@@ -82,6 +85,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 	private List<Control.ResultadoSemantico> resultadosSemanticos = Collections.emptyList();
 	private final List<Object> errorLineHighlights = new java.util.ArrayList<>();
 	private final List<Object> syntaxErrorHighlights = new java.util.ArrayList<>();
+	private final List<Object> semanticErrorHighlights = new java.util.ArrayList<>();
 	private LineNumbers lineNumbers;
 	private File currentFile;
 	private boolean dirty;
@@ -155,7 +159,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		bar.addSeparator(new Dimension(14, 1));
 		JButton analyze = toolButton("Analizar", e -> analyze());
 		analyze.setBackground(NAVY);
-		analyze.setForeground(Color.WHITE);
+		analyze.setForeground(Color.BLACK);
 		bar.add(analyze);
 		bar.addSeparator(new Dimension(18, 1));
 		bar.add(fileLabel);
@@ -354,6 +358,28 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		syntaxErrorHighlights.clear();
 	}
 
+	private void clearSemanticHighlights() {
+		for (Object highlight : semanticErrorHighlights) editor.getHighlighter().removeHighlight(highlight);
+		semanticErrorHighlights.clear();
+	}
+
+	private void highlightSemanticErrors(List<Control.ResultadoSemantico> errores) {
+		Element root = editor.getDocument().getDefaultRootElement();
+		for (Control.ResultadoSemantico error : errores) {
+			int lineIndex = error.linea() - 1;
+			if (lineIndex < 0 || lineIndex >= root.getElementCount()) continue;
+			try {
+				Element line = root.getElement(lineIndex);
+				int start = Math.min(line.getStartOffset(), editor.getDocument().getLength());
+				int end = Math.min(line.getEndOffset(), editor.getDocument().getLength());
+				if (start < end) {
+					semanticErrorHighlights.add(editor.getHighlighter().addHighlight(start, end,
+							new RedUnderlinePainter(Color.RED)));
+				}
+			} catch (BadLocationException ignoredException) { }
+		}
+	}
+
 	private void highlightSyntaxErrorLines(List<Control.ResultadoSintactico> errores) {
 		Element root = editor.getDocument().getDefaultRootElement();
 		for (Control.ResultadoSintactico error : errores) {
@@ -406,6 +432,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		setAnalysisTabEnabled(TAB_SEMANTICO, false);
 		clearErrorHighlights();
 		clearSyntaxHighlights();
+		clearSemanticHighlights();
 		try {
 			resultados = control.analizarLexico(editor.getText());
 			for (Control.ResultadoToken token : resultados) {
@@ -452,6 +479,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 					semanticModel.addRow(new Object[] {"VÁLIDO", "No se encontraron errores semánticos."});
 					appendConsole("Análisis semántico completado correctamente.");
 				} else {
+					highlightSemanticErrors(resultadosSemanticos);
 					for (Control.ResultadoSemantico error : resultadosSemanticos) {
 						semanticModel.addRow(new Object[] {error.estado(), error.descripcion()});
 						appendConsole("[ERROR SEMÁNTICO] Línea " + error.linea() + ", columna "
@@ -580,6 +608,7 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 		semanticModel.setRowCount(0);
 		clearErrorHighlights();
 		clearSyntaxHighlights();
+		clearSemanticHighlights();
 		if (analysisTabs != null) {
 			setAnalysisTabEnabled(TAB_SINTACTICO, false);
 			setAnalysisTabEnabled(TAB_SEMANTICO, false);
@@ -693,6 +722,26 @@ private final JTable syntaxTable = new JTable(syntaxModel);
 
 	private void appendConsole(String message) {
 		console.append(message + System.lineSeparator());
+	}
+
+	private static final class RedUnderlinePainter implements Highlighter.HighlightPainter {
+		private final Color color;
+
+		RedUnderlinePainter(Color color) {
+			this.color = color;
+		}
+
+		@Override
+		public void paint(Graphics graphics, int start, int end, Shape bounds, JTextComponent component) {
+			try {
+				java.awt.geom.Rectangle2D startBounds = component.modelToView2D(start);
+				java.awt.geom.Rectangle2D endBounds = component.modelToView2D(Math.max(start, end - 1));
+				graphics.setColor(color);
+				int y = (int) startBounds.getY() + (int) startBounds.getHeight() - 2;
+				graphics.drawLine((int) startBounds.getX(), y,
+						(int) endBounds.getX() + (int) endBounds.getWidth(), y);
+			} catch (BadLocationException ignoredException) { }
+		}
 	}
 
 	private void showError(String message) {
