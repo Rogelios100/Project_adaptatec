@@ -229,11 +229,11 @@ export function getCurrentToken() {
 }
 
 /**
- * Enviar pregunta a Groq
+ * Enviar pregunta a Gemini
  */
-export async function apiGroqQuestion(pregunta, materia = '', contexto = '') {
+export async function apiGeminiQuestion(pregunta, materia = '', contexto = '') {
   try {
-    const response = await fetch(`${API_BASE}/groq`, {
+    const response = await fetch(`${API_BASE}/gemini`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -244,18 +244,18 @@ export async function apiGroqQuestion(pregunta, materia = '', contexto = '') {
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Error al procesar con Groq');
+      throw new Error(data.error || 'Error al procesar con Gemini');
     }
 
     return data.respuesta;
   } catch (error) {
-    console.error('Error en apiGroqQuestion:', error);
+    console.error('Error en apiGeminiQuestion:', error);
     throw error;
   }
 }
 
 // Alias para compatibilidad con código antiguo
-export const apiGeminiQuestion = apiGroqQuestion;
+export const apiGroqQuestion = apiGeminiQuestion;
 
 // ========== HEARTBEAT Y TIEMPO DE ESTUDIO ==========
 

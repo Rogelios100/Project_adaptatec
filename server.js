@@ -9,8 +9,9 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import materiasRoutes from './routes/materias.js';
 import groqRoutes from './routes/groq.js';
+import geminiRoutes from './routes/gemini.js';
 
-console.log('XAI_API_KEY:', process.env.XAI_API_KEY ? '✅ Configurada' : '❌ No encontrada');
+console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Configurada' : '❌ No encontrada');
 
 // Configurar rutas para archivos estáticos
 const __filename = fileURLToPath(import.meta.url);
@@ -35,7 +36,7 @@ app.use(express.static(path.join(__dirname, 'adaptatec')));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/materias', materiasRoutes);
-app.use('/api/gemini', groqRoutes);
+app.use('/api/gemini', geminiRoutes);
 app.use('/api/groq', groqRoutes);
 
 // Ruta de verificación de salud

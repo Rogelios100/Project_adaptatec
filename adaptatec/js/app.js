@@ -509,18 +509,18 @@ function responderIA(pregunta) {
     return "Puedo ayudarte con temas de algoritmos, desarrollo web, bases de datos, IA, arquitectura de software y seguridad informática según el plan de estudios del TECNM. ¿Qué te gustaría aprender?";
 }
 
-// ========== GROQ FUNCTIONS ==========
+// ========== GEMINI FUNCTIONS ==========
 async function obtenerRespuestaGroq(pregunta, materia = '') {
     try {
         // La API key ahora está en el backend, enviamos el token JWT
-        const respuesta = await API.apiGroqQuestion(
+        const respuesta = await API.apiGeminiQuestion(
             pregunta,
             materia,
             `Contexto educativo del TECNM para Ingeniería en Sistemas`
         );
         return respuesta;
     } catch (error) {
-        console.error('Error con Groq:', error);
+        console.error('Error con Gemini:', error);
         return "Disculpa, tuve un problema contactando con la IA. " + responderIA(pregunta);
     }
 }
@@ -1362,7 +1362,7 @@ async function generarExamenConIA(materia, moduloIndex, moduloNombre) {
     try {
         const token = localStorage.getItem('adaptatec_token');
         
-        const response = await fetch('/api/groq/generate-quiz', {
+        const response = await fetch('/api/gemini/generate-quiz', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

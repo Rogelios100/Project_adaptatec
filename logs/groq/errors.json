@@ -250,5 +250,53 @@
     "materia": 3,
     "responseTime": 1239,
     "statusCode": 200
+  },
+  {
+    "timestamp": "2026-09-17T19:12:52.281Z",
+    "type": "ERROR",
+    "statusCode": 403,
+    "message": "{\"code\":\"permission-denied\",\"error\":\"Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/a5347045-e84e-4559-8a09-8e93af8feccb.\"}",
+    "attempts": 1,
+    "pregunta": "Qué es una subconsulta?",
+    "materia": 3,
+    "severity": "LOW"
+  },
+  {
+    "timestamp": "2026-09-17T19:13:05.461Z",
+    "type": "ERROR",
+    "statusCode": 403,
+    "message": "{\"code\":\"permission-denied\",\"error\":\"Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/a5347045-e84e-4559-8a09-8e93af8feccb.\"}",
+    "attempts": 1,
+    "pregunta": "Bases de Datos",
+    "materia": 3,
+    "severity": "LOW"
+  },
+  {
+    "timestamp": "2026-09-17T19:22:01.447Z",
+    "type": "ERROR",
+    "statusCode": 500,
+    "message": "fetch failed",
+    "attempts": 1,
+    "pregunta": "conceptos de nosql",
+    "materia": 3,
+    "severity": "HIGH"
+  },
+  {
+    "timestamp": "2026-09-17T19:22:01.449Z",
+    "type": "FALLBACK",
+    "statusCode": 500,
+    "reason": "Error 500",
+    "pregunta": "conceptos de nosql",
+    "materia": 3
+  },
+  {
+    "timestamp": "2026-09-17T19:22:54.115Z",
+    "type": "ERROR",
+    "statusCode": 400,
+    "message": "{\"code\":\"invalid-argument\",\"error\":\"Incorrect API key provided. You can obtain an API key from https://console.x.ai.\"}",
+    "attempts": 1,
+    "pregunta": "hola",
+    "materia": 3,
+    "severity": "LOW"
   }
 ]

@@ -224,7 +224,7 @@ RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON, sin explicaciones, sin saludos, sin 
   ]
 }`;
 
-        console.log('🚀 Enviando solicitud a xAI...');
+        console.log('🚀 Enviando solicitud a Gemini...');
         
         const response = await fetch('https://api.x.ai/v1/chat/completions', {
             method: 'POST',
@@ -245,7 +245,7 @@ RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON, sin explicaciones, sin saludos, sin 
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ Error body:', errorText);
-            throw new Error(`xAI API error: ${response.status}`);
+            throw new Error(`Gemini API error: ${response.status}`);
         }
         
         const data = await response.json();
