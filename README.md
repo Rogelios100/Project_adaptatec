@@ -1,5 +1,19 @@
 # Project_adaptatec
-Web page on school learning topics and AI assistance with **Groq** for ultra-fast inference
+Plataforma educativa con asistencia de IA mediante **BazaarLink AI**.
+
+## Configurar BazaarLink AI
+
+1. Crea una API key en [bazaarlink.ai/keys](https://bazaarlink.ai/keys).
+2. Añade estas variables al archivo `.env`:
+
+```env
+BAZAARLINK_API_KEY=sk-bl-tu_clave
+BAZAARLINK_MODEL=auto:free
+BAZAARLINK_BASE_URL=https://api.bazaarlink.ai/v1
+```
+
+El modelo `auto:free` usa la opción gratuita disponible en BazaarLink. Puedes elegir otro modelo compatible cambiando `BAZAARLINK_MODEL`.
+El chat y la generación de exámenes se conectan a BazaarLink desde el backend; la clave no se envía al navegador.
 
 Descripción del Proyecto (Español):
 

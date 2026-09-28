@@ -229,9 +229,9 @@ export function getCurrentToken() {
 }
 
 /**
- * Enviar pregunta a Gemini
+ * Enviar pregunta a BazaarLink AI
  */
-export async function apiGeminiQuestion(pregunta, materia = '', contexto = '') {
+export async function apiBazaarlinkQuestion(pregunta, materia = '', contexto = '') {
   try {
     const response = await fetch(`${API_BASE}/gemini`, {
       method: 'POST',
@@ -244,18 +244,19 @@ export async function apiGeminiQuestion(pregunta, materia = '', contexto = '') {
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Error al procesar con Gemini');
+      throw new Error(data.error || 'Error al procesar con BazaarLink');
     }
 
     return data.respuesta;
   } catch (error) {
-    console.error('Error en apiGeminiQuestion:', error);
+    console.error('Error en apiBazaarlinkQuestion:', error);
     throw error;
   }
 }
 
-// Alias para compatibilidad con código antiguo
-export const apiGroqQuestion = apiGeminiQuestion;
+// Aliases para compatibilidad con código anterior.
+export const apiGeminiQuestion = apiBazaarlinkQuestion;
+export const apiGroqQuestion = apiBazaarlinkQuestion;
 
 // ========== HEARTBEAT Y TIEMPO DE ESTUDIO ==========
 

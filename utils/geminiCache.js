@@ -54,7 +54,7 @@ class GeminiCache {
    * Genera clave de caché basada en pregunta y materia
    */
   generateKey(pregunta, materia) {
-    const normalized = `${pregunta.toLowerCase().trim()}|${(materia || '').toLowerCase().trim()}`;
+    const normalized = `${String(pregunta ?? '').toLowerCase().trim()}|${String(materia ?? '').toLowerCase().trim()}`;
     return Buffer.from(normalized).toString('base64');
   }
 

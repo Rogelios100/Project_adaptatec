@@ -1,5 +1,7 @@
 # Resumen de Adaptación a Groq
 
+> **Guía obsoleta:** el backend ahora usa BazaarLink AI. No configures `GROQ_API_KEY`; sigue la configuración actual en [README.md](README.md).
+
 ## 📝 Cambios Realizados
 
 ### ✅ Archivos Modificados

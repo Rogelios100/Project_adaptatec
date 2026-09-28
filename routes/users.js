@@ -479,13 +479,13 @@ router.delete('/admin/user/:username', verifyToken, async (req, res) => {
   }
 });
 
-// Probar conexión Groq (solo admin)
+// Probar disponibilidad de BazaarLink (solo admin)
 router.get('/admin/test-groq', verifyToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Acceso denegado' });
     }
-    res.json({ status: 'ok', message: 'Conexión con Groq disponible' });
+    res.json({ status: 'ok', message: 'Integración de BazaarLink disponible' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

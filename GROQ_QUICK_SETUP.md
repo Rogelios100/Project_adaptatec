@@ -1,5 +1,7 @@
 # 🚀 Quick Setup - Groq Integration
 
+> **Guía obsoleta:** el backend ahora usa BazaarLink AI. No configures `GROQ_API_KEY`; sigue la configuración actual en [README.md](README.md).
+
 ## Inicio Rápido en 3 Pasos
 
 ### 1️⃣ Obtén tu API Key de Groq (2 minutos)

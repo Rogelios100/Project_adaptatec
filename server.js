@@ -8,10 +8,9 @@ import { initializeDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import materiasRoutes from './routes/materias.js';
-import groqRoutes from './routes/groq.js';
 import geminiRoutes from './routes/gemini.js';
 
-console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Configurada' : '❌ No encontrada');
+console.log('BAZAARLINK_API_KEY:', process.env.BAZAARLINK_API_KEY ? '✅ Configurada' : '❌ No encontrada');
 
 // Configurar rutas para archivos estáticos
 const __filename = fileURLToPath(import.meta.url);
@@ -37,7 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/materias', materiasRoutes);
 app.use('/api/gemini', geminiRoutes);
-app.use('/api/groq', groqRoutes);
+app.use('/api/groq', geminiRoutes);
 
 // Ruta de verificación de salud
 app.get('/api/health', (req, res) => {

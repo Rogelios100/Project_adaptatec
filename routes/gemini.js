@@ -6,40 +6,45 @@ import geminiLogger from '../utils/geminiLogger.js';
 import { getFallbackResponse, shouldUseFallback, getErrorMessage } from '../utils/fallbackResponses.js';
 
 const router = express.Router();
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const BAZAARLINK_MODEL = process.env.BAZAARLINK_MODEL || 'auto:free';
+const BAZAARLINK_API_KEY = process.env.BAZAARLINK_API_KEY;
+const BAZAARLINK_BASE_URL = (process.env.BAZAARLINK_BASE_URL || 'https://api.bazaarlink.ai/v1').replace(/\/+$/, '');
 
-function validateGeminiConfig() {
-  if (!GEMINI_API_KEY || GEMINI_API_KEY === 'tu_api_key_de_gemini_aqui') {
-    return { valid: false, error: 'API key de Gemini no está configurada en el servidor.' };
+function validateBazaarlinkConfig() {
+  if (!BAZAARLINK_API_KEY || BAZAARLINK_API_KEY === 'tu_api_key_de_bazaarlink_aqui') {
+    return { valid: false, error: 'La API key de BazaarLink no está configurada en el servidor.' };
   }
   return { valid: true };
 }
 
-function buildPrompt(pregunta, materia, contexto) {
+function buildMessages(pregunta, materia, contexto) {
   const systemPrompt = `Eres un asistente educativo experto en el plan de estudios TECNM para Ingeniería en Sistemas.
 ${materia ? `El estudiante está estudiando la materia: ${materia}.` : ''}
 Responde de manera clara, educativa y adecuada para estudiantes universitarios.
 Incluye ejemplos prácticos cuando sea posible. Si es una pregunta sobre código, proporciona ejemplos completos.
 Mantén las respuestas concisas pero informativas.`;
 
-  return `${systemPrompt}\n\n${contexto ? `Contexto: ${contexto}\n\n` : ''}Pregunta del estudiante: ${pregunta}`;
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: `${contexto ? `Contexto: ${contexto}\n\n` : ''}Pregunta del estudiante: ${pregunta}` }
+  ];
 }
 
-async function callGeminiAPI(prompt, apiKey, generationConfig = {}) {
+async function callBazaarlinkAPI(messages, generationConfig = {}) {
   const startTime = Date.now();
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const response = await fetch(endpoint, {
+  const response = await fetch(`${BAZAARLINK_BASE_URL}/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${BAZAARLINK_API_KEY}`
+    },
     body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024,
-        topP: 0.9,
-        ...generationConfig
-      }
+      model: BAZAARLINK_MODEL,
+      messages,
+      temperature: 0.7,
+      max_tokens: 1024,
+      top_p: 0.9,
+      ...generationConfig
     })
   });
 
@@ -51,9 +56,9 @@ async function callGeminiAPI(prompt, apiKey, generationConfig = {}) {
   }
 
   const data = await response.json();
-  const respuesta = data.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
+  const respuesta = data.choices?.[0]?.message?.content?.trim();
   if (!respuesta) {
-    const error = new Error('Gemini no devolvió contenido');
+    const error = new Error('BazaarLink no devolvió contenido');
     error.statusCode = 502;
     throw error;
   }
@@ -69,10 +74,10 @@ router.post('/', verifyToken, async (req, res) => {
     return res.status(400).json({ error: 'Pregunta no proporcionada' });
   }
 
-  const configCheck = validateGeminiConfig();
+  const configCheck = validateBazaarlinkConfig();
   if (!configCheck.valid) {
     const fallbackResponse = getFallbackResponse(materia, { statusCode: 503 });
-    geminiLogger.logFallback(503, pregunta, materia, 'GEMINI_API_KEY no configurada');
+    geminiLogger.logFallback(503, pregunta, materia, 'BAZAARLINK_API_KEY no configurada');
     return res.status(200).json({
       respuesta: fallbackResponse,
       source: 'fallback',
@@ -90,12 +95,12 @@ router.post('/', verifyToken, async (req, res) => {
 
   try {
     const result = await retryHandler.execute(
-      () => callGeminiAPI(buildPrompt(pregunta, materia, contexto), GEMINI_API_KEY),
-      'Gemini API Call'
+      () => callBazaarlinkAPI(buildMessages(pregunta, materia, contexto)),
+      'BazaarLink API Call'
     );
     geminiCache.set(pregunta, materia, result.respuesta);
     geminiLogger.logSuccess(pregunta, materia, result.responseTime);
-    return res.json({ respuesta: result.respuesta, source: 'gemini', responseTime: result.responseTime });
+    return res.json({ respuesta: result.respuesta, source: 'bazaarlink', responseTime: result.responseTime });
   } catch (error) {
     const statusCode = error.statusCode || 500;
     const responseTime = Date.now() - startTime;
@@ -129,7 +134,7 @@ router.post('/generate-quiz', verifyToken, async (req, res) => {
     return res.status(400).json({ error: 'Faltan datos del módulo o materia' });
   }
 
-  if (!validateGeminiConfig().valid) {
+  if (!validateBazaarlinkConfig().valid) {
     return res.json(generarQuizFallback(moduloNombre, materiaNombre));
   }
 
@@ -137,8 +142,12 @@ router.post('/generate-quiz', verifyToken, async (req, res) => {
 
   try {
     const { respuesta } = await retryHandler.execute(
-      () => callGeminiAPI(prompt, GEMINI_API_KEY, { temperature: 0.3, maxOutputTokens: 2000, responseMimeType: 'application/json' }),
-      'Gemini Quiz Call'
+      () => callBazaarlinkAPI([{ role: 'user', content: prompt }], {
+        temperature: 0.3,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' }
+      }),
+      'BazaarLink Quiz Call'
     );
     const jsonStart = respuesta.indexOf('{');
     const jsonEnd = respuesta.lastIndexOf('}');
@@ -148,7 +157,7 @@ router.post('/generate-quiz', verifyToken, async (req, res) => {
     }
     return res.json(quiz);
   } catch (error) {
-    console.error('Error generando quiz con Gemini:', error.message);
+    console.error('Error generando quiz con BazaarLink:', error.message);
     return res.json(generarQuizFallback(moduloNombre, materiaNombre));
   }
 });
@@ -166,7 +175,7 @@ function generarQuizFallback(moduloNombre, materiaNombre) {
 
 router.get('/stats', verifyToken, (req, res) => {
   res.json({
-    gemini: geminiLogger.getStats(),
+    bazaarlink: geminiLogger.getStats(),
     cache: geminiCache.getStats(),
     timestamp: new Date().toISOString()
   });
@@ -178,7 +187,7 @@ router.get('/health', (req, res) => {
   const errorReport = geminiLogger.getErrorReport();
   res.json({
     status: stats.successRate > 90 ? 'HEALTHY' : stats.successRate > 70 ? 'DEGRADED' : 'UNHEALTHY',
-    configured: validateGeminiConfig().valid,
+    configured: validateBazaarlinkConfig().valid,
     successRate: stats.successRate,
     totalRequests: stats.totalRequests,
     errors24h: errorReport.errors24h,
@@ -195,6 +204,6 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 geminiCache.cleanup();
-console.log(`Sistema de Gemini inicializado con el modelo ${GEMINI_MODEL}`);
+console.log(`Sistema de BazaarLink inicializado con el modelo ${BAZAARLINK_MODEL}`);
 
 export default router;

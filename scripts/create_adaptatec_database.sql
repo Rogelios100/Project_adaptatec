@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS activities (
   id INT AUTO_INCREMENT PRIMARY KEY,
   userId INT NOT NULL,
   descripcion TEXT NOT NULL,
-  tipo ENUM('general', 'logro', 'modulo', 'examen', 'ia') DEFAULT 'general',
+  tipo ENUM('general', 'logro', 'modulo', 'examen', 'ia', 'estudio', 'recompensa', 'sistema') DEFAULT 'general',
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;

@@ -1,5 +1,7 @@
 # Guía de Migración de Gemini a Groq
 
+> **Guía obsoleta:** el backend ahora usa BazaarLink AI. No configures `GROQ_API_KEY`; sigue la configuración actual en [README.md](README.md).
+
 ## 🚀 ¿Qué es Groq?
 
 Groq es una plataforma de IA ultra-rápida que proporciona inferencia de modelos de lenguaje abiertos. Es compatible con OpenAI y ofrece velocidades de procesamiento muy altas.

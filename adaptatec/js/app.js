@@ -202,8 +202,11 @@ function calcularEstadisticasGenerales() {
 
 async function cargarModulosCompletadosLocal(materiaId) {
     // Limpiar el Map para esta materia antes de cargar
-    for (let i = 0; i < 20; i++) {
-        modulosCompletadosMap.delete(`${materiaId}_${i}`);
+    const materiaPrefix = `${materiaId}_`;
+    for (const key of modulosCompletadosMap.keys()) {
+        if (key.startsWith(materiaPrefix)) {
+            modulosCompletadosMap.delete(key);
+        }
     }
     
     // Cargar SOLO desde backend (fuente de verdad)
@@ -319,15 +322,15 @@ async function guardarModuloCompletadoLocal(materiaId, moduloIndex) {
     }
 }
 
-function calcularModulosCompletadosMateria(materiaId) {
-    let count = 0;
-    const modulos = modulosPorMateria[materiaId] || [];
-    for (let i = 0; i < modulos.length; i++) {
-        if (modulosCompletadosMap.get(`${materiaId}_${i}`) === true) {
-            count++;
-        }
-    }
-    return count;
+function obtenerIdModulo(modulo, index) {
+    return typeof modulo === 'object' && modulo !== null ? modulo.id : index + 1;
+}
+
+function calcularModulosCompletadosMateria(materiaId, modulos = currentModulos) {
+    return modulos.reduce((count, modulo, index) => {
+        const moduloId = obtenerIdModulo(modulo, index);
+        return count + (modulosCompletadosMap.get(`${materiaId}_${moduloId}`) === true ? 1 : 0);
+    }, 0);
 }
 
 
@@ -383,8 +386,8 @@ async function abrirModulosMateria(materiaId, abrirChat = false) {
         if (container) {
             container.innerHTML = modulos.map((modulo, index) => {
                 const moduloNombre = typeof modulo === 'string' ? modulo : modulo.nombre;
-                const moduloId = typeof modulo === 'object' ? modulo.id : index;
-                const estaCompletado = modulosCompletadosMap.get(`${materiaId}_${index}`) === true;
+                const moduloId = obtenerIdModulo(modulo, index);
+                const estaCompletado = modulosCompletadosMap.get(`${materiaId}_${moduloId}`) === true;
                 
                 return `
                     <div class="modulo-card ${estaCompletado ? 'completado' : 'pendiente'}" data-modulo-index="${index}" data-modulo-id="${moduloId}" data-materia-id="${materiaId}">
@@ -509,18 +512,18 @@ function responderIA(pregunta) {
     return "Puedo ayudarte con temas de algoritmos, desarrollo web, bases de datos, IA, arquitectura de software y seguridad informática según el plan de estudios del TECNM. ¿Qué te gustaría aprender?";
 }
 
-// ========== GEMINI FUNCTIONS ==========
+// ========== BAZAARLINK AI FUNCTIONS ==========
 async function obtenerRespuestaGroq(pregunta, materia = '') {
     try {
         // La API key ahora está en el backend, enviamos el token JWT
-        const respuesta = await API.apiGeminiQuestion(
+        const respuesta = await API.apiBazaarlinkQuestion(
             pregunta,
             materia,
             `Contexto educativo del TECNM para Ingeniería en Sistemas`
         );
         return respuesta;
     } catch (error) {
-        console.error('Error con Gemini:', error);
+        console.error('Error con BazaarLink:', error);
         return "Disculpa, tuve un problema contactando con la IA. " + responderIA(pregunta);
     }
 }
@@ -1766,17 +1769,16 @@ async function calificarExamen(materia, moduloIndex, moduloNombre) {
 async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
     const materia = currentUser.materias.find(m => m.id === materiaId);
     if (!materia) throw new Error('Materia no encontrada');
-    
-    const moduloKey = `${materiaId}_${moduloIndex}`;
+
+    const modulo = currentModulos[moduloIndex];
+    const moduloId = obtenerIdModulo(modulo, moduloIndex);
+    const moduloKey = `${materiaId}_${moduloId}`;
     
     // Verificar si ya está completado
     if (modulosCompletadosMap.get(moduloKey) === true) {
         console.log(`⚠️ Módulo ${moduloNombre} ya estaba completado`);
         return;
     }
-    
-    const modulo = currentModulos[moduloIndex];
-    const moduloId = modulo?.id ?? (moduloIndex + 1);
     
     console.log(`📝 Completando módulo: ${moduloNombre} (${moduloKey}) con moduleId real ${moduloId}`);
     
@@ -1815,33 +1817,11 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
         // 3. Actualizar Map
         modulosCompletadosMap.set(moduloKey, true);
         
-        // 4. Calcular nuevo progreso local
-        const nuevosCompletados = postResult.modulosCompletados ?? calcularModulosCompletadosMateria(materiaId);
-        const nuevoProgreso = postResult.progress ?? Math.round((nuevosCompletados / materia.totalModulos) * 100);
+        // El endpoint ya persiste progreso del módulo, progreso de la materia y resumen del usuario.
+        materia.modulosCompletados = postResult.modulosCompletados;
+        materia.progress = postResult.progress;
         
-        // 5. Actualizar progreso en backend
-        const progressResponse = await fetch(`/api/users/progress/${materiaId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                progress: nuevoProgreso,
-                modulosCompletados: nuevosCompletados
-            })
-        });
-        
-        const progressResult = await progressResponse.json();
-        if (!progressResponse.ok) {
-            throw new Error(progressResult.error || `Error HTTP: ${progressResponse.status}`);
-        }
-        
-        // 6. Actualizar localmente con datos confirmados del backend
-        materia.modulosCompletados = progressResult.modulosCompletados ?? nuevosCompletados;
-        materia.progress = progressResult.progress ?? nuevoProgreso;
-        
-        // 7. Registrar actividad
+        // Registrar actividad
         await fetch('/api/users/activity', {
             method: 'POST',
             headers: {
@@ -1854,7 +1834,7 @@ async function marcarModuloCompletado(materiaId, moduloIndex, moduloNombre) {
             })
         }).catch(e => console.warn('Error registrando actividad:', e));
         
-        // 8. Actualizar estadísticas
+        // Actualizar estadísticas
         calcularEstadisticasGenerales();
         
         console.log(`✅ Módulo "${moduloNombre}" completado exitosamente. Progreso: ${materia.progress}%`);
