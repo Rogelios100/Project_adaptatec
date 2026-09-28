@@ -1,10 +1,25 @@
 # Project_adaptatec
-Web page on school learning topics and AI assistance
+Plataforma educativa con asistencia de IA mediante **BazaarLink AI**.
+
+## Configurar BazaarLink AI
+
+1. Crea una API key en [bazaarlink.ai/keys](https://bazaarlink.ai/keys).
+2. Añade estas variables al archivo `.env`:
+
+```env
+BAZAARLINK_API_KEY=sk-bl-tu_clave
+BAZAARLINK_MODEL=auto:free
+BAZAARLINK_BASE_URL=https://api.bazaarlink.ai/v1
+```
+
+El modelo `auto:free` usa la opción gratuita disponible en BazaarLink. Puedes elegir otro modelo compatible cambiando `BAZAARLINK_MODEL`.
+El chat y la generación de exámenes se conectan a BazaarLink desde el backend; la clave no se envía al navegador.
+
 Descripción del Proyecto (Español):
 
-Adaptatec es una plataforma web diseñada para apoyar el aprendizaje académico mediante un agente de Inteligencia Artificial adaptativo, capaz de asistir al estudiante según la materia seleccionada, su nivel de conocimiento y su progreso.
+Adaptatec es una plataforma web diseñada para apoyar el aprendizaje académico mediante un agente de Inteligencia Artificial adaptativo potenciado por **Groq** API, capaz de asistir al estudiante según la materia seleccionada, su nivel de conocimiento y su progreso.
 
-El sistema no solo responde preguntas, sino que acompaña el proceso educativo, ajustando explicaciones, generando ejercicios y ofreciendo retroalimentación continua.
+El sistema no solo responde preguntas, sino que acompaña el proceso educativo, ajustando explicaciones, generando ejercicios y ofreciendo retroalimentación continua, todo con inferencia ultra-rápida.
 
 Objetivo:
 
@@ -15,7 +30,6 @@ Resolver dudas en tiempo real
 Practicar con ejercicios adaptativos
 Recibir explicaciones personalizadas
 Obtener recompensas por progreso
-*  Funcionalidades Principales
 * Selección de Materia
 
 El estudiante puede elegir una materia específica.
